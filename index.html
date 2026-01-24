@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Bruzz 2K: v4.0 Full Suite</title>
+    <title>Basketball Scouting Game</title>
     <style>
         :root { --blue: #3b82f6; --red: #ef4444; --dark: #0f172a; --panel: #1e293b; --text: #f8fafc; }
         body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; user-select: none; }
@@ -17,13 +17,13 @@
             background: linear-gradient(135deg, #0f172a 0%, #000000 100%); 
             align-items: center; justify-content: center;
         }
-        .hero-title { font-size: 80px; font-weight: 900; letter-spacing: -2px; line-height: 1; margin-bottom: 10px; text-shadow: 0 0 40px rgba(59, 130, 246, 0.4); }
+        .hero-title { font-size: 60px; font-weight: 900; letter-spacing: -1px; line-height: 1; margin-bottom: 15px; text-shadow: 0 0 40px rgba(59, 130, 246, 0.4); text-transform: uppercase; text-align: center; }
         .hero-subtitle { color: #64748b; font-size: 14px; letter-spacing: 4px; margin-bottom: 60px; font-weight: 700; }
         
         .menu-btn {
             background: transparent; border: 1px solid rgba(255,255,255,0.1); 
             color: white; padding: 15px 60px; font-size: 18px; font-weight: 700; 
-            margin: 10px; cursor: pointer; transition: 0.2s; width: 300px; text-align: center;
+            margin: 10px; cursor: pointer; transition: 0.2s; width: 320px; text-align: center;
             text-transform: uppercase; letter-spacing: 1px;
         }
         .menu-btn:hover { background: white; color: black; transform: scale(1.05); }
@@ -95,10 +95,10 @@
 <body>
 
     <div id="screen-menu" class="screen active">
-        <div class="hero-title">THE BRUZZ <span style="color:var(--blue)">2K</span></div>
-        <div class="hero-subtitle">BASKETBALL SIMULATION SUITE</div>
+        <div class="hero-title">BASKETBALL<br><span style="color:var(--blue)">SCOUTING GAME</span></div>
+        <div class="hero-subtitle">STRATEGY & SIMULATION ENGINE</div>
         
-        <button class="menu-btn primary" onclick="nav('gm')">League Manager</button>
+        <button class="menu-btn primary" onclick="nav('gm')">GM Dashboard</button>
         <button class="menu-btn" onclick="startMatchup()">Play Now</button>
         <button class="menu-btn" onclick="alert('Settings Saved')">Settings</button>
     </div>
@@ -174,7 +174,7 @@
         // --- 1. STATE & DB ---
         const NEW_PLAYER = { name: "New Rookie", num: 0, h: 75, skin: "#8d5524", shoes: "#ffffff", stats: { spd: 70, sht: 70, def: 50 } };
         
-        let DB = JSON.parse(localStorage.getItem('bruzz_2k_v4')) || {
+        let DB = JSON.parse(localStorage.getItem('basketball_scouting_db')) || {
             teams: [
                 { id: 't1', name: 'The Bruzz', color: '#3b82f6', roster: [{...NEW_PLAYER, id:'p1', name:'My Player', stats:{spd:90,sht:85,def:80}}] },
                 { id: 't2', name: 'Varsity', color: '#ef4444', roster: [{...NEW_PLAYER, id:'p2', name:'Opponent', num:23, stats:{spd:85,sht:80,def:70}}] }
@@ -185,7 +185,7 @@
         let engine = { scene:null, camera:null, renderer:null, rigs:[], paused: false };
 
         // Save System
-        const save = () => localStorage.setItem('bruzz_2k_v4', JSON.stringify(DB));
+        const save = () => localStorage.setItem('basketball_scouting_db', JSON.stringify(DB));
 
         // --- 2. NAVIGATION ---
         function nav(screenId) {
