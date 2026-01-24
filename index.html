@@ -2,218 +2,213 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Bruzz 3D: v0.4 Stable</title>
-    <style> 
-        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; } 
-        .ui-panel {
-            position: absolute; top: 20px; left: 20px; width: 260px;
-            background: rgba(20, 20, 30, 0.9); border: 1px solid #444;
-            color: white; padding: 15px; border-radius: 8px; z-index: 100;
+    <title>The Bruzz 3D: Native Engine</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Courier New', monospace; user-select: none; }
+        
+        /* UI OVERLAY */
+        #ui-panel {
+            position: absolute; top: 20px; left: 20px; width: 250px;
+            background: rgba(0, 0, 0, 0.85); border: 1px solid #444;
+            color: #eee; padding: 15px; border-radius: 8px; z-index: 100;
         }
-        .slider-row { margin-bottom: 12px; }
-        .slider-row label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: #aaa; }
-        input[type=range] { width: 100%; cursor: pointer; }
+        h2 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; color: #3b82f6; }
+        .control { margin-bottom: 12px; }
+        .control label { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 4px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #3b82f6; }
+        
+        /* LOADING SCREEN */
+        #loader {
+            position: absolute; inset: 0; background: #000; z-index: 999;
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-size: 20px; font-weight: bold;
+        }
     </style>
-    
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div id="loader">LOADING ENGINE...</div>
 
-        function App() {
-            // --- SETTINGS STATE ---
-            const [config, setConfig] = useState({ speed: 1.0, height: 1.0, iq: 50, aggression: 50 });
-            
-            const handleConfig = (key, e) => setConfig({...config, [key]: parseFloat(e.target.value)});
+    <div id="ui-panel">
+        <h2>GOD MODE v0.5 (Native)</h2>
+        
+        <div class="control">
+            <label><span>SPEED</span> <span id="val-speed">1.0x</span></label>
+            <input type="range" id="in-speed" min="0.1" max="2.0" step="0.1" value="1.0">
+        </div>
 
-            return (
-                <div>
-                    {/* UI PANEL */}
-                    <div className="ui-panel">
-                        <h3 style={{marginTop:0, borderBottom:'1px solid #555', paddingBottom:5}}>GOD MODE v0.4</h3>
-                        
-                        <div className="slider-row">
-                            <label><span>SPEED</span> <span>{config.speed.toFixed(1)}x</span></label>
-                            <input type="range" min="0.1" max="2.0" step="0.1" value={config.speed} onChange={(e)=>handleConfig('speed',e)} />
-                        </div>
-                        <div className="slider-row">
-                            <label><span>HEIGHT</span> <span>{config.height.toFixed(2)}m</span></label>
-                            <input type="range" min="0.5" max="2.0" step="0.1" value={config.height} onChange={(e)=>handleConfig('height',e)} />
-                        </div>
-                        <div className="slider-row">
-                            <label><span>DEFENSE IQ</span> <span>{config.iq}</span></label>
-                            <input type="range" min="0" max="100" value={config.iq} onChange={(e)=>handleConfig('iq',e)} />
-                        </div>
-                        <div className="slider-row">
-                            <label><span>AGGRESSION</span> <span>{config.aggression}</span></label>
-                            <input type="range" min="0" max="100" value={config.aggression} onChange={(e)=>handleConfig('aggression',e)} />
-                        </div>
-                        
-                        <div style={{fontSize:'10px', color:'#777', marginTop:10}}>
-                            WASD to Move • Arrow Keys to Rotate Camera
-                        </div>
-                    </div>
+        <div class="control">
+            <label><span>HEIGHT</span> <span id="val-height">1.00m</span></label>
+            <input type="range" id="in-height" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
 
-                    {/* 3D ENGINE */}
-                    <ThreeEngine config={config} />
-                </div>
-            );
+        <div class="control">
+            <label><span>DEFENSE IQ</span> <span id="val-iq">50</span></label>
+            <input type="range" id="in-iq" min="0" max="100" value="50">
+        </div>
+
+        <div class="control">
+            <label><span>AGGRESSION</span> <span id="val-agg">50</span></label>
+            <input type="range" id="in-agg" min="0" max="100" value="50">
+        </div>
+
+        <div style="font-size: 10px; color: #666; margin-top: 10px;">
+            WASD to Move • Click window to focus
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SETTINGS & STATE ---
+        const settings = { speed: 1.0, height: 1.0, iq: 50, aggression: 50 };
+        const keys = { w: false, a: false, s: false, d: false };
+
+        // Bind UI Inputs
+        document.getElementById('in-speed').oninput = (e) => { settings.speed = parseFloat(e.target.value); updateUI(); };
+        document.getElementById('in-height').oninput = (e) => { settings.height = parseFloat(e.target.value); updateUI(); };
+        document.getElementById('in-iq').oninput = (e) => { settings.iq = parseInt(e.target.value); updateUI(); };
+        document.getElementById('in-agg').oninput = (e) => { settings.aggression = parseInt(e.target.value); updateUI(); };
+
+        function updateUI() {
+            document.getElementById('val-speed').textContent = settings.speed.toFixed(1) + 'x';
+            document.getElementById('val-height').textContent = settings.height.toFixed(2) + 'm';
+            document.getElementById('val-iq').textContent = settings.iq;
+            document.getElementById('val-agg').textContent = settings.aggression;
         }
 
-        // --- THE ENGINE ---
-        function ThreeEngine({ config }) {
-            const mountRef = useRef(null);
-            const configRef = useRef(config); // To access fresh config in loop
+        // --- 2. THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111827);
+        scene.fog = new THREE.Fog(0x111827, 40, 100);
 
-            // Keep configRef updated without restarting the engine
-            useEffect(() => { configRef.current = config; }, [config]);
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 30, 50);
 
-            useEffect(() => {
-                // 1. SCENE SETUP
-                const scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x111827); // Dark Blue
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-                const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-                camera.position.set(0, 40, 60);
-                camera.lookAt(0, 0, 0);
+        // Lights
+        const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambient);
+        const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+        sun.position.set(20, 50, 20);
+        sun.castShadow = true;
+        scene.add(sun);
 
-                const renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                mountRef.current.appendChild(renderer.domElement);
+        // Court
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.1;
+        scene.add(floor);
 
-                // 2. LIGHTS (Bright & Simple)
-                const ambient = new THREE.AmbientLight(0xffffff, 0.7);
-                scene.add(ambient);
-                const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-                sun.position.set(20, 50, 20);
-                scene.add(sun);
+        const court = new THREE.Mesh(new THREE.PlaneGeometry(50, 94), new THREE.MeshStandardMaterial({ color: 0xd97736 }));
+        court.rotation.x = -Math.PI / 2;
+        court.receiveShadow = true;
+        scene.add(court);
 
-                // 3. COURT
-                const floorGeo = new THREE.PlaneGeometry(60, 100);
-                const floorMat = new THREE.MeshLambertMaterial({ color: 0xd97736 }); // Wood color
-                const floor = new THREE.Mesh(floorGeo, floorMat);
-                floor.rotation.x = -Math.PI / 2;
-                scene.add(floor);
+        // Hoop
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14), new THREE.MeshStandardMaterial({ color: 0x333 }));
+        pole.position.set(0, 7, 45);
+        scene.add(pole);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.1, 8, 16), new THREE.MeshStandardMaterial({ color: 'orange' }));
+        rim.rotation.x = Math.PI / 2; rim.position.set(0, 11, 43.5);
+        scene.add(rim);
 
-                // Paint Area
-                const paint = new THREE.Mesh(new THREE.PlaneGeometry(16, 19), new THREE.MeshBasicMaterial({color: 0x1e3a8a}));
-                paint.rotation.x = -Math.PI/2;
-                paint.position.set(0, 0.02, 35);
-                scene.add(paint);
+        // --- 3. GAME OBJECTS ---
+        const players = [
+            { id: 0, x: 0, z: 20, team: 'us', color: 0x3b82f6, mesh: null }, // You
+            { id: 1, x: -15, z: 10, team: 'us', color: 0x60a5fa, mesh: null }, // Teammate
+            { id: 5, x: 0, z: 15, team: 'them', color: 0xef4444, mesh: null }, // Defender
+        ];
 
-                // Hoop
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,14), new THREE.MeshLambertMaterial({color:0x333}));
-                pole.position.set(0, 7, 45);
-                scene.add(pole);
-                const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.1, 8, 16), new THREE.MeshBasicMaterial({color: 'orange'}));
-                rim.rotation.x = Math.PI/2; rim.position.set(0, 11, 43.5);
-                scene.add(rim);
+        const pGeo = new THREE.CapsuleGeometry(1, 4, 4, 8);
 
-                // 4. PLAYERS
-                const players = [
-                    { id: 0, x: 0, z: 20, team: 'us', color: 0x3b82f6 },      // YOU (Blue)
-                    { id: 1, x: -15, z: 10, team: 'us', color: 0x60a5fa },    // Teammate
-                    { id: 5, x: 0, z: 15, team: 'them', color: 0xef4444 },    // Defender (Red)
-                ];
+        players.forEach(p => {
+            const mat = new THREE.MeshStandardMaterial({ color: p.color });
+            const mesh = new THREE.Mesh(pGeo, mat);
+            mesh.castShadow = true;
+            mesh.position.set(p.x, 2, p.z);
+            scene.add(mesh);
+            p.mesh = mesh;
+        });
 
-                const meshes = [];
-                const pGeo = new THREE.CapsuleGeometry(1, 4, 4, 8); // Capsule Shape
-                
-                players.forEach(p => {
-                    const mat = new THREE.MeshLambertMaterial({ color: p.color });
-                    const mesh = new THREE.Mesh(pGeo, mat);
-                    mesh.position.set(p.x, 2, p.z);
-                    scene.add(mesh);
-                    // Store reference for animation
-                    meshes.push({ mesh, data: p });
-                });
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshStandardMaterial({ color: 0xff8800 }));
+        ball.castShadow = true;
+        scene.add(ball);
 
-                // BALL
-                const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshBasicMaterial({color: 0xff8800}));
-                scene.add(ballMesh);
+        // --- 4. CONTROLS ---
+        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
-                // 5. INPUT HANDLING
-                const keys = {};
-                window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-                window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+        // --- 5. GAME LOOP ---
+        let lastTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
 
-                // 6. GAME LOOP
-                let lastTime = 0;
-                const animate = (time) => {
-                    requestAnimationFrame(animate);
-                    const dt = (time - lastTime) / 1000;
-                    lastTime = time;
-                    const cfg = configRef.current; // Read live sliders
+            // Remove Loader once running
+            if(document.getElementById('loader')) document.getElementById('loader').remove();
 
-                    // --- PHYSICS & LOGIC ---
-                    const user = players[0];
-                    const speed = 15 * cfg.speed * dt;
+            // 1. Move Human (Player 0)
+            const user = players[0];
+            const moveSpeed = 15 * settings.speed * dt;
 
-                    // Move User
-                    if(keys['w']) user.z -= speed;
-                    if(keys['s']) user.z += speed;
-                    if(keys['a']) user.x -= speed;
-                    if(keys['d']) user.x += speed;
+            if (keys['w']) user.z -= moveSpeed;
+            if (keys['s']) user.z += moveSpeed;
+            if (keys['a']) user.x -= moveSpeed;
+            if (keys['d']) user.x += moveSpeed;
 
-                    // AI Logic
-                    players.forEach(p => {
-                        if(p.id === 0) return; // Skip human
+            // 2. AI Logic
+            players.forEach(p => {
+                if(p.id === 0) return; // Skip human
 
-                        // Defender chases human
-                        if(p.team === 'them') {
-                            const target = players[0];
-                            // Ideal position: between player and hoop (0, 45)
-                            const guardDist = 3 + (100 - cfg.aggression)/10; // High aggression = closer
-                            
-                            // Simple homing
-                            const dx = target.x - p.x;
-                            const dz = (target.z + guardDist) - p.z; // Stay slightly in front
-                            
-                            const reaction = (cfg.iq / 100) * 5 * dt; // IQ determines reaction speed
-                            p.x += dx * reaction;
-                            p.z += dz * reaction;
-                        }
-                    });
-
-                    // --- UPDATE VISUALS ---
-                    meshes.forEach(item => {
-                        const p = item.data;
-                        // Apply Scale (Height)
-                        item.mesh.scale.y = cfg.height;
-                        item.mesh.position.y = 2 * cfg.height; // Keep feet on ground
-                        item.mesh.position.x = p.x;
-                        item.mesh.position.z = p.z;
-                    });
-
-                    // Ball Follows Player 0 (Dribble)
-                    ballMesh.position.x = user.x + 0.8;
-                    ballMesh.position.z = user.z + 1;
-                    ballMesh.position.y = (2 * cfg.height) + Math.abs(Math.sin(time * 0.008)) * 3;
-
-                    // Camera Follow
-                    camera.position.x += (user.x * 0.2 - camera.position.x) * 0.1;
+                if(p.team === 'them') {
+                    // Defender AI: Chase Player 0
+                    const target = players[0];
                     
-                    renderer.render(scene, camera);
-                };
-                animate(0);
+                    // "Guard Distance" changes based on aggression slider
+                    // High aggression (100) = very close (2 units). Low (0) = far (12 units)
+                    const guardDist = 12 - (settings.aggression / 10); 
 
-                // Cleanup on unmount
-                return () => {
-                    if(mountRef.current) mountRef.current.innerHTML = '';
-                };
-            }, []);
+                    // Target spot is between the player and the hoop
+                    const dx = target.x - p.x;
+                    const dz = (target.z + guardDist) - p.z; // Stay in front
 
-            return <div ref={mountRef} />;
+                    // Reaction speed based on IQ slider
+                    const reaction = (settings.iq / 100) * 5 * dt;
+
+                    p.x += dx * reaction;
+                    p.z += dz * reaction;
+                }
+            });
+
+            // 3. Update Visuals
+            players.forEach(p => {
+                p.mesh.position.set(p.x, 2 * settings.height, p.z);
+                p.mesh.scale.set(1, settings.height, 1);
+            });
+
+            // Ball Dribble Logic
+            ball.position.x = user.x + 0.8;
+            ball.position.z = user.z + 1.2;
+            ball.position.y = (2 * settings.height) + Math.abs(Math.sin(time * 0.008)) * 3;
+
+            // Camera Logic
+            camera.position.x += (user.x * 0.3 - camera.position.x) * 0.1;
+            camera.lookAt(0, 5, 0);
+
+            renderer.render(scene, camera);
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        animate(0);
     </script>
 </body>
 </html>
