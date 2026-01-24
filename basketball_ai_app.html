@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bruzz: AI Basketball Engine</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (UMD) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { background-color: #0f172a; color: white; overflow: hidden; margin: 0; user-select: none; }
+        canvas { 
+            image-rendering: pixelated; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.05) 50%,
+                rgba(0,0,0,0.05)
+            );
+            background-size: 100% 4px;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- ICONS ---
+        const IconPlay = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+        const IconPause = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
+        const IconRefresh = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const IconSettings = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>;
+        const IconBrain = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
+
+        // --- CONSTANTS ---
+        const WORLD_W = 1200;
+        const WORLD_H = 800;
+        const HOOP = { x: 1100, y: 400 }; 
+        const PLAYER_SPEED = 5;
+        
+        const C_OFFENSE = '#3b82f6';
+        const C_DEFENSE = '#ef4444';
+        const C_BALL = '#f97316';
+        const C_WOOD = '#d97736';
+        const C_PAINT = '#b45309';
+
+        // --- MAIN APP ---
+        function App() {
+            const [score, setScore] = useState({ us: 0, them: 0 });
+            const [feedback, setFeedback] = useState("Click 'Play' to Start");
+            const [coachMsg, setCoachMsg] = useState("Welcome to The Bruzz. Run the play!");
+            const [apiKey, setApiKey] = useState("");
+            const [showSettings, setShowSettings] = useState(false);
+            const [playType, setPlayType] = useState("floppy");
+            const [mode, setMode] = useState('pause'); 
+
+            const canvasRef = useRef(null);
+            const requestRef = useRef();
+            const keys = useRef({});
+            
+            const game = useRef({
+                ball: { x: 200, y: 400, z: 15, vx: 0, vy: 0, vz: 0, owner: 0, state: 'held' },
+                players: [
+                    { id: 0, x: 200, y: 400, team: 'us', role: 'PG' },
+                    { id: 1, x: 100, y: 100, team: 'us', role: 'SG' },
+                    { id: 2, x: 100, y: 700, team: 'us', role: 'SF' },
+                    { id: 3, x: 300, y: 300, team: 'us', role: 'PF' },
+                    { id: 4, x: 300, y: 500, team: 'us', role: 'C' },
+                    { id: 5, x: 400, y: 400, team: 'them', guard: 0 },
+                    { id: 6, x: 300, y: 100, team: 'them', guard: 1 },
+                    { id: 7, x: 300, y: 700, team: 'them', guard: 2 },
+                    { id: 8, x: 450, y: 300, team: 'them', guard: 3 },
+                    { id: 9, x: 450, y: 500, team: 'them', guard: 4 },
+                ]
+            });
+
+            // --- INPUT ---
+            useEffect(() => {
+                const kd = (e) => { keys.current[e.key.toLowerCase()] = true; if(e.code === 'Space') handleShoot(); };
+                const ku = (e) => keys.current[e.key.toLowerCase()] = false;
+                
+                window.addEventListener('keydown', kd);
+                window.addEventListener('keyup', ku);
+                return () => {
+                    window.removeEventListener('keydown', kd);
+                    window.removeEventListener('keyup', ku);
+                };
+            }, []);
+
+            // --- AI COACH ---
+            const askCoach = async (eventType, data) => {
+                if(!apiKey) return;
+                const prompts = {
+                    'bad': `Player forced a contested shot (${data} distance). Give short critique.`,
+                    'good': `Player took open shot (${data} distance). Praise IQ.`
+                };
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompts[eventType] }] }] })
+                    });
+                    const json = await res.json();
+                    setCoachMsg(json.candidates[0].content.parts[0].text);
+                } catch(e) {}
+            };
+
+            // --- GAME ACTIONS ---
+            const handleShoot = () => {
+                const s = game.current;
+                if(s.ball.owner !== 0) return;
+
+                const defender = s.players[5];
+                const dist = Math.hypot(s.players[0].x - defender.x, s.players[0].y - defender.y);
+                const quality = dist > 80 ? 'good' : 'bad';
+                
+                askCoach(quality, Math.round(dist));
+                setFeedback(quality === 'good' ? "OPEN SHOT!" : "CONTESTED!");
+
+                // Physics
+                s.ball.owner = -1;
+                s.ball.state = 'shot';
+                const time = 60;
+                s.ball.vx = (HOOP.x - s.players[0].x) / time;
+                s.ball.vy = (HOOP.y - s.players[0].y) / time;
+                s.ball.vz = 18; // Arc
+            };
+
+            const handleMouseClick = (e) => {
+                if(game.current.ball.owner !== 0) return;
+                const rect = canvasRef.current.getBoundingClientRect();
+                const scaleX = WORLD_W / rect.width;
+                const scaleY = WORLD_H / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top) * scaleY;
+
+                game.current.players.forEach(p => {
+                    if(p.team === 'us' && p.id !== 0) {
+                        if(Math.hypot(p.x - mx, p.y - my) < 50) {
+                            // Pass
+                            const s = game.current;
+                            s.ball.owner = -1;
+                            s.ball.state = 'air';
+                            s.ball.target = p.id;
+                            const t = 30;
+                            s.ball.vx = (p.x - s.players[0].x) / t;
+                            s.ball.vy = (p.y - s.players[0].y) / t;
+                            s.ball.vz = 8;
+                        }
+                    }
+                });
+            };
+
+            // --- LOOP ---
+            const update = () => {
+                if(mode === 'pause') return;
+                const s = game.current;
+
+                // 1. User Move
+                const user = s.players[0];
+                if(keys.current['w']) user.x += PLAYER_SPEED;
+                if(keys.current['s']) user.x -= PLAYER_SPEED;
+                if(keys.current['a']) user.y -= PLAYER_SPEED;
+                if(keys.current['d']) user.y += PLAYER_SPEED;
+
+                // 2. AI Move (Teammates)
+                const time = Date.now() / 1000;
+                s.players.forEach(p => {
+                    if(p.team === 'us' && p.id !== 0) {
+                        let tx = p.x, ty = p.y;
+                        if(playType === 'floppy') {
+                            if(p.role === 'SG') { tx = 800 + Math.cos(time)*100; ty = 400 + Math.sin(time)*300; }
+                            if(p.role === 'PF') { tx = 700; ty = 300; }
+                            if(p.role === 'C') { tx = 700; ty = 500; }
+                        } else {
+                            if(p.role === 'C') { tx = user.x + 40; ty = user.y - 40; } // Screen
+                        }
+                        // Move
+                        const dx = tx - p.x; const dy = ty - p.y;
+                        const d = Math.hypot(dx, dy);
+                        if(d > 5) { p.x += (dx/d)*3; p.y += (dy/d)*3; }
+                    }
+                });
+
+                // 3. Defense
+                s.players.forEach(p => {
+                    if(p.team === 'them') {
+                        const man = s.players[p.guard];
+                        const tx = man.x + (HOOP.x - man.x) * 0.15;
+                        const ty = man.y + (HOOP.y - man.y) * 0.15;
+                        const dx = tx - p.x; const dy = ty - p.y;
+                        const d = Math.hypot(dx, dy);
+                        if(d > 5) { p.x += (dx/d)*3.2; p.y += (dy/d)*3.2; }
+                    }
+                });
+
+                // 4. Ball
+                if(s.ball.state === 'held') {
+                    const p = s.players.find(pl => pl.id === s.ball.owner);
+                    if(p) { s.ball.x = p.x + 15; s.ball.y = p.y; s.ball.z = 15 + Math.sin(time*15)*10; }
+                } else {
+                    s.ball.x += s.ball.vx; s.ball.y += s.ball.vy; s.ball.z += s.ball.vz;
+                    s.ball.vz -= 0.5; // Gravity
+
+                    // Catch
+                    if(s.ball.state === 'air' && s.ball.z < 40) {
+                        const t = s.players[s.ball.target];
+                        if(t && Math.hypot(s.ball.x - t.x, s.ball.y - t.y) < 30) {
+                            s.ball.state = 'held'; s.ball.owner = t.id;
+                            // AI Pass Back
+                            if(t.id !== 0) setTimeout(() => {
+                                s.ball.owner = -1; s.ball.state = 'air'; s.ball.target = 0;
+                                const dx = s.players[0].x - t.x; const dy = s.players[0].y - t.y;
+                                s.ball.vx = dx/40; s.ball.vy = dy/40; s.ball.vz = 8;
+                            }, 800);
+                        }
+                    }
+                    // Hoop
+                    if(s.ball.state === 'shot' && Math.abs(s.ball.z - 110) < 20) { // Rim Height approx
+                        if(Math.hypot(s.ball.x - HOOP.x, s.ball.y - HOOP.y) < 30) {
+                            setScore(sc => ({...sc, us: sc.us + 2}));
+                            setFeedback("BUCKET!");
+                            s.ball.state = 'air'; s.ball.vx = 0; s.ball.vy = 0; s.ball.vz = -5;
+                            setTimeout(() => { s.ball.state = 'held'; s.ball.owner = 0; s.players[0].x = 200; s.players[0].y=400; }, 1500);
+                        }
+                    }
+                    if(s.ball.z < 0) { s.ball.z = 0; s.ball.vz *= -0.6; }
+                }
+            };
+
+            const draw = () => {
+                const ctx = canvasRef.current.getContext('2d');
+                ctx.clearRect(0, 0, WORLD_W, WORLD_H);
+
+                // Floor
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(0,0,WORLD_W,WORLD_H);
+                ctx.fillStyle = C_WOOD; ctx.fillRect(50, 50, 1100, 700); // Court
+                ctx.fillStyle = C_PAINT; ctx.fillRect(800, 300, 300, 200); // Key
+                
+                // Hoop
+                ctx.fillStyle = 'orange'; ctx.beginPath(); ctx.arc(HOOP.x, HOOP.y, 15, 0, Math.PI*2); ctx.fill();
+
+                // Players
+                const s = game.current;
+                s.players.forEach(p => {
+                    // Shadow
+                    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                    ctx.beginPath(); ctx.ellipse(p.x, p.y + 10, 15, 8, 0, 0, Math.PI*2); ctx.fill();
+
+                    // Body
+                    ctx.fillStyle = p.team === 'us' ? C_OFFENSE : C_DEFENSE;
+                    if(p.id === 0) { ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI*2); ctx.stroke(); }
+                    
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = 'white'; ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.fillText(p.role || 'D', p.x, p.y+4);
+                });
+
+                // Ball
+                const b = s.ball;
+                const scale = 1 + (b.z / 300);
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(b.x, b.y + b.z, 10*scale, 5*scale, 0,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = C_BALL; ctx.beginPath(); ctx.arc(b.x, b.y - b.z, 12*scale, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.stroke();
+            };
+
+            useEffect(() => {
+                const loop = () => {
+                    update();
+                    draw();
+                    requestRef.current = requestAnimationFrame(loop);
+                };
+                requestRef.current = requestAnimationFrame(loop);
+                return () => cancelAnimationFrame(requestRef.current);
+            }, [mode, playType]);
+
+            return (
+                <div className="flex h-screen w-full font-sans relative">
+                    <div className="scanlines"></div>
+                    
+                    {/* LEFT UI */}
+                    <div className="w-80 glass-panel z-20 flex flex-col p-6 space-y-6 text-white h-full relative">
+                        <div>
+                            <h1 className="text-3xl font-black italic tracking-tighter text-blue-500">THE BRUZZ</h1>
+                            <p className="text-xs text-gray-400">AI BASKETBALL ENGINE v3.0</p>
+                        </div>
+
+                        <div className="bg-slate-800 p-4 rounded-xl border border-white/10">
+                            <h2 className="text-xs font-bold text-gray-400 uppercase mb-2">Score</h2>
+                            <div className="flex justify-between text-2xl font-mono font-bold">
+                                <span className="text-blue-400">US: {score.us}</span>
+                                <span className="text-red-400">THEM: {score.them}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                             <div className="flex gap-2">
+                                <button onClick={() => setMode(mode === 'play' ? 'pause' : 'play')} className={`flex-1 py-3 rounded font-bold text-sm ${mode==='play'?'bg-red-600':'bg-green-600'}`}>
+                                    {mode === 'play' ? 'PAUSE' : 'START GAME'}
+                                </button>
+                                <button onClick={() => {game.current.players = JSON.parse(JSON.stringify(FORMATIONS.setup)); game.current.ball.owner=0;}} className="px-4 bg-slate-700 rounded"><IconRefresh/></button>
+                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <p className="text-xs text-gray-500 font-bold uppercase">Strategy</p>
+                            <button onClick={() => setPlayType('floppy')} className={`w-full py-2 rounded text-xs font-bold ${playType==='floppy'?'bg-blue-600':'bg-slate-800'}`}>HORNS FLOPPY</button>
+                            <button onClick={() => setPlayType('pnr')} className={`w-full py-2 rounded text-xs font-bold ${playType==='pnr'?'bg-blue-600':'bg-slate-800'}`}>HIGH PNR</button>
+                        </div>
+
+                        <div className="bg-indigo-900/40 p-4 rounded-xl border border-indigo-500/30 flex-1">
+                            <h3 className="text-xs font-bold text-indigo-300 uppercase mb-2 flex items-center gap-2"><IconBrain/> Coach AI</h3>
+                            <p className="text-sm text-indigo-100 leading-relaxed italic">"{coachMsg}"</p>
+                            <button onClick={() => setShowSettings(!showSettings)} className="mt-4 text-[10px] text-indigo-400 underline flex items-center gap-1"><IconSettings/> Settings</button>
+                        </div>
+                    </div>
+
+                    {/* MAIN GAME */}
+                    <div className="flex-1 bg-slate-900 relative flex items-center justify-center">
+                        <canvas 
+                            ref={canvasRef} 
+                            width={1200} height={800} 
+                            className="w-full h-full object-contain"
+                            onMouseDown={handlePassClick}
+                        />
+                        
+                        {/* Settings Modal */}
+                        {showSettings && (
+                            <div className="absolute inset-0 bg-black/80 backdrop-blur z-50 flex items-center justify-center">
+                                <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 w-96 shadow-2xl">
+                                    <h2 className="text-xl font-bold mb-4">Settings</h2>
+                                    <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Gemini API Key" className="w-full bg-black border border-slate-700 rounded p-2 mt-1 mb-4 text-sm text-white"/>
+                                    <button onClick={() => setShowSettings(false)} className="w-full bg-blue-600 py-2 rounded font-bold text-sm hover:bg-blue-500 text-white">Save & Close</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Feedback Overlay */}
+                        <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center pointer-events-none">
+                            <div className="text-4xl font-black text-white drop-shadow-lg mb-2">{feedback}</div>
+                            {mode === 'pause' && <div className="bg-black/60 px-4 py-2 rounded text-sm text-gray-300">WASD to Move • Click Teammate to Pass • Space to Shoot</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
