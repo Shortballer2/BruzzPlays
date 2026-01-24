@@ -2,207 +2,512 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Bruzz 3D: v0.7 Fixed</title>
+    <title>The Bruzz: League Manager v3.0</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #050505; font-family: 'Courier New', monospace; user-select: none; }
+        :root { --accent: #3b82f6; --panel: #0f1115; --border: 1px solid #2a2a2a; --text: #e2e8f0; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); user-select: none; }
         
-        /* Loading & Error Screen */
-        #loader {
-            position: absolute; inset: 0; background: #000; z-index: 999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: white; font-size: 20px; font-weight: bold;
+        /* UI LAYER */
+        #app-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+        
+        /* TOP BAR */
+        .top-bar {
+            position: absolute; top: 0; left: 0; right: 0; height: 60px;
+            background: rgba(15, 17, 21, 0.95); border-bottom: var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
+            pointer-events: auto; backdrop-filter: blur(10px);
         }
+        .logo { font-weight: 900; letter-spacing: 2px; font-size: 18px; color: white; }
+        .matchup-display { display: flex; gap: 20px; align-items: center; font-family: 'Courier New', monospace; font-weight: bold; font-size: 20px; }
+        .vs-badge { background: #222; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #666; }
 
-        /* UI Panel */
-        #ui-panel {
-            position: absolute; top: 20px; left: 20px; width: 250px;
-            background: rgba(20, 20, 20, 0.9); border: 1px solid #444;
-            color: #eee; padding: 15px; border-radius: 8px; z-index: 100;
+        /* SIDEBAR */
+        .sidebar {
+            position: absolute; left: 0; top: 60px; bottom: 0; width: 260px;
+            background: rgba(10, 10, 12, 0.95); border-right: var(--border);
+            pointer-events: auto; display: flex; flex-direction: column;
         }
-        h2 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px; color: #3b82f6; }
-        .control { margin-bottom: 12px; }
-        .control label { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-bottom: 4px; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #3b82f6; }
+        .nav-header { padding: 20px; font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-item {
+            padding: 15px 20px; cursor: pointer; border-left: 3px solid transparent; color: #888; transition: 0.2s; font-size: 13px; font-weight: 500;
+        }
+        .nav-item:hover { background: #1a1a1a; color: white; }
+        .nav-item.active { border-left-color: var(--accent); background: linear-gradient(90deg, #1e293b, transparent); color: white; }
+
+        /* MAIN PANEL AREA */
+        .panel-container {
+            position: absolute; left: 280px; top: 80px; width: 380px; bottom: 20px;
+            pointer-events: none; /* Let clicks pass through to 3D if no panel */
+        }
+        .panel {
+            background: rgba(15, 17, 21, 0.96); border: var(--border); border-radius: 8px;
+            padding: 25px; pointer-events: auto; display: none; height: 100%; box-sizing: border-box;
+            box-shadow: 10px 10px 40px rgba(0,0,0,0.5); overflow-y: auto;
+        }
+        .panel.active { display: block; animation: slideRight 0.2s ease-out; }
+        @keyframes slideRight { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+
+        /* FORM ELEMENTS */
+        h2 { margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid #222; padding-bottom: 10px; }
+        h3 { font-size: 12px; color: #666; margin: 20px 0 10px 0; text-transform: uppercase; }
+        
+        .list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px; background: #16181d; border: 1px solid #222; margin-bottom: 8px;
+            border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .list-item:hover { border-color: #444; background: #1f2229; }
+        .list-item.selected { border-color: var(--accent); background: #1e293b; }
+        
+        .row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .col { flex: 1; }
+        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 6px; font-weight: 600; }
+        
+        input[type=text], input[type=number], select {
+            width: 100%; background: #0a0a0a; border: 1px solid #333; color: white;
+            padding: 10px; border-radius: 4px; font-family: inherit; font-size: 13px; box-sizing: border-box;
+        }
+        input[type=color] { width: 100%; height: 40px; border: none; background: none; cursor: pointer; }
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+
+        button {
+            width: 100%; padding: 12px; background: #222; color: white; border: 1px solid #333;
+            border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px; margin-top: 10px; transition: 0.2s;
+        }
+        button:hover { background: #333; }
+        button.primary { background: var(--accent); border-color: var(--accent); }
+        button.primary:hover { background: #2563eb; }
+        button.danger { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+        button.danger:hover { background: #7f1d1d; color: white; }
+
+        .tag { font-size: 10px; padding: 2px 6px; background: #333; border-radius: 3px; color: #ccc; }
     </style>
     
-    <script>
-        window.onerror = function(msg, url, line) {
-            const loader = document.getElementById('loader');
-            if(loader) {
-                loader.innerHTML += `<div style="color:#ff5555; margin-top:20px; font-size:14px; text-align:center;">
-                    ERROR: ${msg}<br>Line: ${line}
-                </div>`;
-            }
-        };
-    </script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.150.1/three.min.js"></script>
 </head>
 <body>
 
-    <div id="loader">
-        <div>INITIALIZING v0.7...</div>
-    </div>
+    <div id="app-ui">
+        <div class="top-bar">
+            <div class="logo">BRUZZ <span style="color:var(--accent)">GM</span></div>
+            <div class="matchup-display" id="matchup-header">
+                <span style="color:#3b82f6" id="score-home">HOME</span>
+                <span class="vs-badge">VS</span>
+                <span style="color:#ef4444" id="score-away">AWAY</span>
+            </div>
+            <div style="font-size:11px; color:#666;">v3.0</div>
+        </div>
 
-    <div id="ui-panel" style="display:none;">
-        <h2>GOD MODE v0.7</h2>
-        <div class="control">
-            <label><span>SPEED</span> <span id="val-speed">1.0x</span></label>
-            <input type="range" id="in-speed" min="0.1" max="2.0" step="0.1" value="1.0">
+        <div class="sidebar">
+            <div class="nav-header">Management</div>
+            <div class="nav-item active" onclick="nav('teams')">🛡️ Teams & Rosters</div>
+            <div class="nav-item" onclick="nav('matchup')">⚔️ Matchup Setup</div>
+            
+            <div class="nav-header">Simulation</div>
+            <div class="nav-item" onclick="nav('camera')">🎥 Broadcast Cam</div>
+            <div class="nav-item" onclick="nav('settings')">⚙️ Settings</div>
         </div>
-        <div class="control">
-            <label><span>HEIGHT</span> <span id="val-height">1.00m</span></label>
-            <input type="range" id="in-height" min="0.5" max="2.0" step="0.1" value="1.0">
+
+        <div class="panel-container">
+            <div id="panel-teams" class="panel active">
+                <h2>League Database</h2>
+                <div id="team-list"></div>
+                <button onclick="addTeam()">+ Create New Team</button>
+
+                <div id="team-editor" style="display:none; margin-top:30px; border-top:1px solid #333; padding-top:20px;">
+                    <div class="row">
+                        <div class="col"><label>Team Name</label><input type="text" id="ed-t-name" oninput="saveTeamEdit()"></div>
+                        <div class="col" style="flex:0.3"><label>Color</label><input type="color" id="ed-t-color" oninput="saveTeamEdit()"></div>
+                    </div>
+                    
+                    <h3>Roster</h3>
+                    <div id="roster-list"></div>
+                    <button onclick="addPlayer()">+ Add Player</button>
+                    <button class="danger" onclick="deleteTeam()" style="margin-top:30px;">Delete Team</button>
+                </div>
+            </div>
+
+            <div id="panel-player" class="panel">
+                <button onclick="nav('teams')" style="background:none; border:none; color:#666; text-align:left; padding:0; margin-bottom:10px;">← Back to Roster</button>
+                <h2 id="p-ed-header">Edit Player</h2>
+                
+                <div class="row">
+                    <div class="col"><label>Name</label><input type="text" id="pe-name" oninput="savePlayerEdit()"></div>
+                    <div class="col" style="flex:0.4"><label>Number</label><input type="number" id="pe-num" oninput="savePlayerEdit()"></div>
+                </div>
+
+                <h3>Appearance</h3>
+                <div class="row">
+                    <div class="col"><label>Height: <span id="pe-h-val"></span></label><input type="range" id="pe-h" min="65" max="90" oninput="savePlayerEdit()"></div>
+                </div>
+                <div class="row">
+                    <div class="col"><label>Skin Tone</label><input type="color" id="pe-skin" oninput="savePlayerEdit()"></div>
+                    <div class="col"><label>Shoes</label><input type="color" id="pe-shoe" oninput="savePlayerEdit()"></div>
+                </div>
+
+                <h3>Attributes</h3>
+                <label>Speed / Athleticism (<span id="pe-spd-val"></span>)</label>
+                <input type="range" id="pe-spd" min="40" max="99" oninput="savePlayerEdit()">
+                
+                <label style="margin-top:10px;">Shooting Ability (<span id="pe-sht-val"></span>)</label>
+                <input type="range" id="pe-sht" min="40" max="99" oninput="savePlayerEdit()">
+                
+                <label style="margin-top:10px;">Defense IQ (<span id="pe-iq-val"></span>)</label>
+                <input type="range" id="pe-iq" min="40" max="99" oninput="savePlayerEdit()">
+
+                <button class="danger" onclick="deletePlayer()" style="margin-top:30px;">Cut Player</button>
+            </div>
+
+            <div id="panel-matchup" class="panel">
+                <h2>Game Setup</h2>
+                <label>Home Team</label>
+                <select id="sel-home" onchange="updateMatchup()"></select>
+                
+                <label style="margin-top:15px;">Away Team</label>
+                <select id="sel-away" onchange="updateMatchup()"></select>
+
+                <div style="margin-top:30px; padding:15px; background:#1a1a1a; border-radius:6px; font-size:12px; color:#888; line-height:1.5;">
+                    Select two teams from your database to load them onto the court.
+                    The 3D engine will automatically spawn all players from both rosters.
+                </div>
+            </div>
+
+            <div id="panel-camera" class="panel">
+                <h2>Broadcast Control</h2>
+                <div class="list-item" onclick="setCam('broadcast')">📺 Side Broadcast</div>
+                <div class="list-item" onclick="setCam('2k')">🏀 2K (Behind)</div>
+                <div class="list-item" onclick="setCam('sky')">🦅 Skybox</div>
+                <div class="list-item" onclick="setCam('baseline')">📷 Baseline</div>
+            </div>
+            
+            <div id="panel-settings" class="panel">
+                <h2>Global Settings</h2>
+                <label>Game Speed</label>
+                <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="window.gameSpeed = parseFloat(this.value)">
+                
+                <h3 style="color:#ef4444">Danger Zone</h3>
+                <button class="danger" onclick="resetDB()">Factory Reset Database</button>
+            </div>
         </div>
-        <div class="control">
-            <label><span>DEFENSE IQ</span> <span id="val-iq">50</span></label>
-            <input type="range" id="in-iq" min="0" max="100" value="50">
-        </div>
-        <div class="control">
-            <label><span>AGGRESSION</span> <span id="val-agg">50</span></label>
-            <input type="range" id="in-agg" min="0" max="100" value="50">
-        </div>
-        <div style="font-size: 10px; color: #666; margin-top: 10px;">WASD to Move</div>
     </div>
 
     <script>
-        // Check if Three loaded correctly
-        if (typeof THREE === 'undefined') {
-            throw new Error("Engine failed to load. Check internet connection.");
-        }
+        // --- 1. DATABASE MANAGER ---
+        const DEFAULT_DB = {
+            teams: [
+                { id: 't1', name: 'The Bruzz', color: '#3b82f6', roster: [
+                    { id: 'p1', name: 'Me', num: 0, h: 75, skin: '#8d5524', shoes: '#ffffff', stats: { spd: 90, sht: 80, iq: 85 } },
+                    { id: 'p2', name: 'Teammate', num: 12, h: 79, skin: '#5c3a21', shoes: '#111111', stats: { spd: 70, sht: 60, iq: 70 } }
+                ]},
+                { id: 't2', name: 'Varsity Opps', color: '#ef4444', roster: [
+                    { id: 'p3', name: 'Star PG', num: 5, h: 74, skin: '#c68642', shoes: '#ff0000', stats: { spd: 95, sht: 85, iq: 90 } },
+                    { id: 'p4', name: 'Big Man', num: 34, h: 84, skin: '#3e2723', shoes: '#000000', stats: { spd: 50, sht: 40, iq: 60 } }
+                ]}
+            ],
+            matchup: { home: 't1', away: 't2' }
+        };
 
-        // --- 1. CONFIG ---
-        const settings = { speed: 1.0, height: 1.0, iq: 50, aggression: 50 };
-        const keys = {};
+        let DB = JSON.parse(localStorage.getItem('bruzz_gm_v3')) || JSON.parse(JSON.stringify(DEFAULT_DB));
+        let activeTeamId = null;
+        let activePlayerId = null;
+        let gameSpeed = 1.0;
+        let camMode = 'broadcast';
 
-        // Bind UI
-        const uiPanel = document.getElementById('ui-panel');
-        document.getElementById('in-speed').oninput = (e) => { settings.speed = parseFloat(e.target.value); updateUI(); };
-        document.getElementById('in-height').oninput = (e) => { settings.height = parseFloat(e.target.value); updateUI(); };
-        document.getElementById('in-iq').oninput = (e) => { settings.iq = parseInt(e.target.value); updateUI(); };
-        document.getElementById('in-agg').oninput = (e) => { settings.aggression = parseInt(e.target.value); updateUI(); };
+        function save() { localStorage.setItem('bruzz_gm_v3', JSON.stringify(DB)); refresh3D(); }
+        function resetDB() { localStorage.removeItem('bruzz_gm_v3'); location.reload(); }
 
-        function updateUI() {
-            document.getElementById('val-speed').textContent = settings.speed.toFixed(1) + 'x';
-            document.getElementById('val-height').textContent = settings.height.toFixed(2) + 'm';
-            document.getElementById('val-iq').textContent = settings.iq;
-            document.getElementById('val-agg').textContent = settings.aggression;
-        }
-
-        // --- 2. SCENE ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111827);
-        
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 30, 50);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // Lights
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambient);
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(20, 50, 20);
-        sun.castShadow = true;
-        scene.add(sun);
-
-        // Court
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-        floor.rotation.x = -Math.PI / 2; floor.position.y = -0.1;
-        scene.add(floor);
-
-        const court = new THREE.Mesh(new THREE.PlaneGeometry(50, 94), new THREE.MeshStandardMaterial({ color: 0xd97736 }));
-        court.rotation.x = -Math.PI / 2; court.receiveShadow = true;
-        scene.add(court);
-
-        // Hoop
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14), new THREE.MeshStandardMaterial({ color: 0x333 }));
-        pole.position.set(0, 7, 45); scene.add(pole);
-        const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.1, 8, 16), new THREE.MeshStandardMaterial({ color: 'orange' }));
-        rim.rotation.x = Math.PI / 2; rim.position.set(0, 11, 43.5); scene.add(rim);
-
-        // Players (CapsuleGeometry will work now!)
-        const players = [
-            { id: 0, x: 0, z: 20, team: 'us', color: 0x3b82f6, mesh: null },
-            { id: 1, x: -15, z: 10, team: 'us', color: 0x60a5fa, mesh: null },
-            { id: 5, x: 0, z: 15, team: 'them', color: 0xef4444, mesh: null },
-        ];
-        
-        const pGeo = new THREE.CapsuleGeometry(1, 4, 4, 8);
-        
-        players.forEach(p => {
-            const mesh = new THREE.Mesh(pGeo, new THREE.MeshStandardMaterial({ color: p.color }));
-            mesh.castShadow = true; 
-            mesh.position.set(p.x, 2, p.z);
-            scene.add(mesh);
-            p.mesh = mesh;
-        });
-
-        // Ball
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshStandardMaterial({ color: 0xff8800 }));
-        ball.castShadow = true; scene.add(ball);
-
-        // Controls
-        window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-        window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // --- 3. LOOP ---
-        let lastTime = 0;
-        function animate(time) {
-            requestAnimationFrame(animate);
-            const dt = (time - lastTime) / 1000;
-            lastTime = time;
-
-            // Hide loader
-            const loader = document.getElementById('loader');
-            if(loader) { loader.remove(); uiPanel.style.display = 'block'; }
-
-            // Movement
-            const user = players[0];
-            const speed = 15 * settings.speed * dt;
-            if (keys['w']) user.z -= speed;
-            if (keys['s']) user.z += speed;
-            if (keys['a']) user.x -= speed;
-            if (keys['d']) user.x += speed;
-
-            // AI
-            players.forEach(p => {
-                if(p.id === 0) return;
-                if(p.team === 'them') {
-                    const target = players[0];
-                    const guardDist = 12 - (settings.aggression / 10);
-                    const dx = target.x - p.x;
-                    const dz = (target.z + guardDist) - p.z;
-                    const reaction = (settings.iq / 100) * 5 * dt;
-                    p.x += dx * reaction; p.z += dz * reaction;
-                }
-            });
-
-            // Update Visuals
-            players.forEach(p => {
-                p.mesh.position.set(p.x, 2 * settings.height, p.z);
-                p.mesh.scale.set(1, settings.height, 1);
-            });
-
-            // Ball
-            ball.position.set(user.x + 0.8, (2 * settings.height) + Math.abs(Math.sin(time * 0.008)) * 3, user.z + 1.2);
+        // --- 2. UI FUNCTIONS ---
+        function nav(p) {
+            document.querySelectorAll('.panel').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+            document.getElementById('panel-' + (p === 'teams' && activePlayerId ? 'player' : p)).classList.add('active');
+            if(event) event.target.classList.add('active');
             
-            // Camera
-            camera.position.x += (user.x * 0.3 - camera.position.x) * 0.1;
-            camera.lookAt(0, 5, 0);
+            if(p === 'teams') renderTeamList();
+            if(p === 'matchup') renderMatchupSelect();
+        }
+
+        function renderTeamList() {
+            const list = document.getElementById('team-list');
+            list.innerHTML = '';
+            DB.teams.forEach(t => {
+                const div = document.createElement('div');
+                div.className = `list-item ${activeTeamId === t.id ? 'selected' : ''}`;
+                div.innerHTML = `<span style="font-weight:bold; color:${t.color}">●</span> ${t.name} <span class="tag">${t.roster.length} Players</span>`;
+                div.onclick = () => { activeTeamId = t.id; renderTeamList(); renderTeamEditor(); };
+                list.appendChild(div);
+            });
+            if(activeTeamId) renderTeamEditor();
+        }
+
+        function renderTeamEditor() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            if(!t) return;
+            document.getElementById('team-editor').style.display = 'block';
+            document.getElementById('ed-t-name').value = t.name;
+            document.getElementById('ed-t-color').value = t.color;
+            
+            const rList = document.getElementById('roster-list');
+            rList.innerHTML = '';
+            t.roster.forEach(p => {
+                const d = document.createElement('div');
+                d.className = 'list-item';
+                d.innerHTML = `<span><span class="tag">#${p.num}</span> ${p.name}</span> <span style="font-size:10px; color:#666">${Math.floor(p.h/12)}'${p.h%12}"</span>`;
+                d.onclick = () => { activePlayerId = p.id; nav('teams'); loadPlayerEdit(); };
+                rList.appendChild(d);
+            });
+        }
+
+        function saveTeamEdit() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            t.name = document.getElementById('ed-t-name').value;
+            t.color = document.getElementById('ed-t-color').value;
+            save();
+            renderTeamList(); // Refresh name
+        }
+
+        function addTeam() {
+            const newId = 't' + Date.now();
+            DB.teams.push({ id: newId, name: 'New Team', color: '#ffffff', roster: [] });
+            activeTeamId = newId;
+            save(); renderTeamList();
+        }
+        
+        function deleteTeam() {
+            DB.teams = DB.teams.filter(t => t.id !== activeTeamId);
+            activeTeamId = null; save(); renderTeamList(); document.getElementById('team-editor').style.display='none';
+        }
+
+        function addPlayer() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            const newP = { id: 'p'+Date.now(), name: 'New Player', num: 0, h: 75, skin: '#a1665e', shoes: '#111111', stats: { spd: 50, sht: 50, iq: 50 } };
+            t.roster.push(newP);
+            save(); renderTeamEditor();
+        }
+
+        function loadPlayerEdit() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            const p = t.roster.find(x => x.id === activePlayerId);
+            
+            document.getElementById('p-ed-header').innerText = "Edit " + p.name;
+            document.getElementById('pe-name').value = p.name;
+            document.getElementById('pe-num').value = p.num;
+            document.getElementById('pe-h').value = p.h; document.getElementById('pe-h-val').innerText = `${Math.floor(p.h/12)}'${p.h%12}"`;
+            document.getElementById('pe-skin').value = p.skin;
+            document.getElementById('pe-shoe').value = p.shoes;
+            
+            document.getElementById('pe-spd').value = p.stats.spd; document.getElementById('pe-spd-val').innerText = p.stats.spd;
+            document.getElementById('pe-sht').value = p.stats.sht; document.getElementById('pe-sht-val').innerText = p.stats.sht;
+            document.getElementById('pe-iq').value = p.stats.iq; document.getElementById('pe-iq-val').innerText = p.stats.iq;
+            
+            document.getElementById('panel-teams').classList.remove('active');
+            document.getElementById('panel-player').classList.add('active');
+        }
+
+        function savePlayerEdit() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            const p = t.roster.find(x => x.id === activePlayerId);
+            
+            p.name = document.getElementById('pe-name').value;
+            p.num = parseInt(document.getElementById('pe-num').value);
+            p.h = parseInt(document.getElementById('pe-h').value);
+            p.skin = document.getElementById('pe-skin').value;
+            p.shoes = document.getElementById('pe-shoe').value;
+            p.stats.spd = parseInt(document.getElementById('pe-spd').value);
+            p.stats.sht = parseInt(document.getElementById('pe-sht').value);
+            p.stats.iq = parseInt(document.getElementById('pe-iq').value);
+            
+            document.getElementById('pe-h-val').innerText = `${Math.floor(p.h/12)}'${p.h%12}"`;
+            document.getElementById('pe-spd-val').innerText = p.stats.spd;
+            document.getElementById('pe-sht-val').innerText = p.stats.sht;
+            document.getElementById('pe-iq-val').innerText = p.stats.iq;
+            
+            save();
+        }
+
+        function deletePlayer() {
+            const t = DB.teams.find(x => x.id === activeTeamId);
+            t.roster = t.roster.filter(p => p.id !== activePlayerId);
+            activePlayerId = null;
+            save(); nav('teams');
+        }
+
+        function renderMatchupSelect() {
+            const h = document.getElementById('sel-home');
+            const a = document.getElementById('sel-away');
+            h.innerHTML = ''; a.innerHTML = '';
+            
+            DB.teams.forEach(t => {
+                const opt = new Option(t.name, t.id);
+                h.add(opt.cloneNode(true));
+                a.add(opt);
+            });
+            h.value = DB.matchup.home;
+            a.value = DB.matchup.away;
+        }
+
+        function updateMatchup() {
+            DB.matchup.home = document.getElementById('sel-home').value;
+            DB.matchup.away = document.getElementById('sel-away').value;
+            save();
+        }
+
+        function setCam(c) { camMode = c; }
+
+        // --- 3. 3D ENGINE ---
+        let scene, camera, renderer, clock;
+        let rigs = []; // Array of active player meshes
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.Fog(0x050505, 30, 150);
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({antialias:true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+            clock = new THREE.Clock();
+
+            // Lights
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const spot = new THREE.SpotLight(0xffffff, 1.2);
+            spot.position.set(20, 80, 40); spot.castShadow = true;
+            spot.shadow.mapSize.set(2048,2048);
+            scene.add(spot);
+
+            // Court
+            const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048;
+            const ctx = cvs.getContext('2d');
+            ctx.fillStyle='#cea07e'; ctx.fillRect(0,0,1024,2048);
+            ctx.fillStyle='rgba(0,0,0,0.05)'; for(let i=0;i<2048;i+=10) ctx.fillRect(0,i,1024,2);
+            ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380);
+            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948);
+            ctx.beginPath(); ctx.arc(512,140,400,0,Math.PI); ctx.stroke();
+            const tex = new THREE.CanvasTexture(cvs); tex.anisotropy=16;
+            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.4}));
+            court.rotation.x = -Math.PI/2; court.receiveShadow=true; scene.add(court);
+
+            // Hoop
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,14), new THREE.MeshStandardMaterial({color:0x222}));
+            pole.position.set(0,7,-44); scene.add(pole);
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,16), new THREE.MeshStandardMaterial({color:'orange'}));
+            rim.rotation.x = Math.PI/2; rim.position.set(0,11,-41); scene.add(rim);
+
+            refresh3D();
+            animate();
+        }
+
+        function createRig(p, teamColor, teamSide) {
+            const group = new THREE.Group();
+            const scale = p.h / 75;
+            group.scale.set(scale, scale, scale);
+
+            const matJer = new THREE.MeshStandardMaterial({color: teamColor});
+            const matSkin = new THREE.MeshStandardMaterial({color: p.skin});
+            const matShoe = new THREE.MeshStandardMaterial({color: p.shoes});
+
+            // Torso
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.4, 0.9), matJer);
+            torso.position.y = 3.8; torso.castShadow = true; group.add(torso);
+            // Head
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.0, 0.95), matSkin);
+            head.position.y = 5.5; head.castShadow = true; group.add(head);
+            // Limbs
+            const legGeo = new THREE.BoxGeometry(0.6, 1.8, 0.6);
+            const lLeg = new THREE.Group(); lLeg.position.set(-0.5, 2.6, 0);
+            lLeg.add(new THREE.Mesh(legGeo, matJer).translateY(-0.9));
+            lLeg.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 0.5), matSkin).translateY(-2.7));
+            lLeg.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 1.0), matShoe).translateY(-3.7).translateX(0).translateZ(0.2));
+            group.add(lLeg);
+            const rLeg = lLeg.clone(); rLeg.position.set(0.5, 2.6, 0); group.add(rLeg);
+
+            const armGeo = new THREE.BoxGeometry(0.45, 2.2, 0.45);
+            const lArm = new THREE.Mesh(armGeo, matSkin); lArm.position.set(-1.2, 4.5, 0); group.add(lArm);
+            const rArm = new THREE.Mesh(armGeo, matSkin); rArm.position.set(1.2, 4.5, 0); group.add(rArm);
+
+            // Spawn Pos
+            const zPos = teamSide === 'home' ? 10 + Math.random()*10 : -10 - Math.random()*10;
+            group.position.set((Math.random()-0.5)*20, 0, zPos);
+
+            return { mesh: group, data: p, limbs: { lLeg, rLeg, lArm, rArm, torso } };
+        }
+
+        function refresh3D() {
+            // Clear old rigs
+            rigs.forEach(r => scene.remove(r.mesh));
+            rigs = [];
+
+            // Get Teams
+            const hTeam = DB.teams.find(t => t.id === DB.matchup.home);
+            const aTeam = DB.teams.find(t => t.id === DB.matchup.away);
+
+            if(hTeam) {
+                document.getElementById('score-home').innerText = hTeam.name.toUpperCase();
+                document.getElementById('score-home').style.color = hTeam.color;
+                hTeam.roster.forEach(p => {
+                    const r = createRig(p, hTeam.color, 'home');
+                    scene.add(r.mesh); rigs.push(r);
+                });
+            }
+            if(aTeam) {
+                document.getElementById('score-away').innerText = aTeam.name.toUpperCase();
+                document.getElementById('score-away').style.color = aTeam.color;
+                aTeam.roster.forEach(p => {
+                    const r = createRig(p, aTeam.color, 'away');
+                    scene.add(r.mesh); rigs.push(r);
+                });
+            }
+        }
+
+        const keys = {w:false, a:false, s:false, d:false};
+        window.addEventListener('keydown', e=>keys[e.key.toLowerCase()]=true);
+        window.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            const time = Date.now() * 0.001;
+            
+            // Assume first player of Home team is user controlled for now
+            const userRig = rigs[0];
+            if(userRig) {
+                const spd = 10 * gameSpeed * dt;
+                if(keys.w) userRig.mesh.position.z -= spd;
+                if(keys.s) userRig.mesh.position.z += spd;
+                if(keys.a) userRig.mesh.position.x -= spd;
+                if(keys.d) userRig.mesh.position.x += spd;
+
+                // Cam
+                if(camMode === 'broadcast') {
+                    camera.position.x += (25 + userRig.mesh.position.x*0.2 - camera.position.x)*0.1;
+                    camera.position.z += (userRig.mesh.position.z*0.1 - camera.position.z)*0.1;
+                    camera.position.y = 35; camera.lookAt(userRig.mesh.position.x, 0, userRig.mesh.position.z);
+                } else if (camMode === '2k') {
+                    camera.position.x += (userRig.mesh.position.x - camera.position.x)*0.1;
+                    camera.position.z += ((userRig.mesh.position.z+25) - camera.position.z)*0.1;
+                    camera.position.y = 15; camera.lookAt(userRig.mesh.position.x, 5, userRig.mesh.position.z-15);
+                } else if (camMode === 'sky') {
+                    camera.position.set(0,80,5); camera.lookAt(0,0,0);
+                } else {
+                    camera.position.set(0,5,50); camera.lookAt(userRig.mesh.position);
+                }
+            }
+
+            // Animate Everyone
+            rigs.forEach(r => {
+                const l = r.limbs;
+                // Simple idle breathing
+                l.torso.position.y = 3.8 + Math.sin(time*2 + r.mesh.position.x)*0.05;
+            });
 
             renderer.render(scene, camera);
         }
 
-        animate(0);
+        init3D();
+        nav('teams');
+
     </script>
 </body>
 </html>
