@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basketball Scouting Game</title>
+    <title>Basketball Scouting Game v5.1</title>
     <style>
         :root { --blue: #3b82f6; --red: #ef4444; --dark: #0f172a; --panel: #18181b; --text: #f8fafc; --accent: #8b5cf6; }
         body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; user-select: none; }
@@ -57,7 +57,7 @@
         .player-row:hover { background: #1a1a1a; color: white; }
         .player-row.active { color: var(--blue); font-weight: bold; background: #1e293b; border-radius: 4px; border-bottom: none; }
         
-        /* EDITOR PANEL (New & Expanded) */
+        /* EDITOR PANEL */
         .editor-panel { 
             width: 500px; background: #18181b; padding: 30px; border-radius: 12px; 
             border: 1px solid #333; height: fit-content; display: none; 
@@ -77,16 +77,26 @@
         input[type=text], input[type=number] { 
             background: #09090b; border: 1px solid #333; color: white; padding: 8px; width: 100%; border-radius: 4px; box-sizing: border-box; font-family: monospace;
         }
+        input[type=text]:focus, input[type=number]:focus { border-color: var(--blue); outline: none; }
+
         input[type=color] { width: 100%; height: 35px; background: none; border: none; cursor: pointer; }
         
         /* Custom Sliders */
         input[type=range] { width: 100%; height: 4px; background: #333; border-radius: 2px; -webkit-appearance: none; cursor: pointer; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--blue); border-radius: 50%; margin-top: -4px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--blue); border-radius: 50%; margin-top: -4px; transition: transform 0.1s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
         
         /* Stats Blocks */
-        .stat-block { background: #222; padding: 8px; border-radius: 4px; text-align: center; }
-        .stat-block label { justify-content: center; margin-bottom: 5px; color: #888; }
-        .stat-val { font-size: 14px; font-weight: bold; color: white; display: block; margin-bottom: 5px; }
+        .stat-block { background: #222; padding: 8px; border-radius: 4px; text-align: center; border: 1px solid #2a2a2a; }
+        .stat-block:hover { border-color: #444; }
+        .stat-block label { justify-content: center; margin-bottom: 2px; color: #888; font-size: 9px; }
+        
+        /* New Number Input for Stats */
+        .stat-num-input {
+            width: 100% !important; border: none !important; background: transparent !important;
+            text-align: center; font-size: 16px; font-weight: bold; color: white; padding: 2px !important; margin-bottom: 4px;
+        }
+        .stat-num-input:focus { background: #111 !important; color: var(--blue); }
 
         /* --- 3. GAME UI --- */
         #screen-game { background: #000; }
@@ -155,7 +165,13 @@
                 <div class="section-title">Body & Appearance</div>
                 <div class="form-grid">
                     <div class="control"><label>Height (in)</label><input type="number" id="ed-h" oninput="savePlayer()"></div>
-                    <div class="control"><label>Weight (lbs)</label><input type="range" id="ed-w" min="0" max="100" oninput="savePlayer()"></div>
+                    <div class="control">
+                        <label>Weight / Build</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="number" id="num-w" oninput="sync('w', 'num')" style="width:50px">
+                            <input type="range" id="st-w" min="0" max="100" oninput="sync('w', 'range')" style="flex:1">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-grid">
                     <div class="control"><label>Skin Tone</label><input type="color" id="ed-skin" oninput="savePlayer()"></div>
@@ -174,26 +190,26 @@
 
                 <div class="section-title">Offensive Attributes</div>
                 <div class="stat-grid">
-                    <div class="stat-block"><label>Layup</label><span class="stat-val" id="val-layup">70</span><input type="range" id="st-layup" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Dunk</label><span class="stat-val" id="val-dunk">50</span><input type="range" id="st-dunk" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Mid</label><span class="stat-val" id="val-mid">60</span><input type="range" id="st-mid" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>3PT</label><span class="stat-val" id="val-3pt">60</span><input type="range" id="st-3pt" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Pass</label><span class="stat-val" id="val-pass">60</span><input type="range" id="st-pass" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Handle</label><span class="stat-val" id="val-handle">60</span><input type="range" id="st-handle" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>O-Reb</label><span class="stat-val" id="val-oreb">50</span><input type="range" id="st-oreb" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>FT</label><span class="stat-val" id="val-ft">70</span><input type="range" id="st-ft" min="25" max="99" oninput="savePlayer()"></div>
+                    <div class="stat-block"><label>Layup</label><input type="number" id="num-layup" class="stat-num-input" oninput="sync('layup','num')"><input type="range" id="st-layup" min="25" max="99" oninput="sync('layup','range')"></div>
+                    <div class="stat-block"><label>Dunk</label><input type="number" id="num-dunk" class="stat-num-input" oninput="sync('dunk','num')"><input type="range" id="st-dunk" min="25" max="99" oninput="sync('dunk','range')"></div>
+                    <div class="stat-block"><label>Mid</label><input type="number" id="num-mid" class="stat-num-input" oninput="sync('mid','num')"><input type="range" id="st-mid" min="25" max="99" oninput="sync('mid','range')"></div>
+                    <div class="stat-block"><label>3PT</label><input type="number" id="num-3pt" class="stat-num-input" oninput="sync('3pt','num')"><input type="range" id="st-3pt" min="25" max="99" oninput="sync('3pt','range')"></div>
+                    <div class="stat-block"><label>Pass</label><input type="number" id="num-pass" class="stat-num-input" oninput="sync('pass','num')"><input type="range" id="st-pass" min="25" max="99" oninput="sync('pass','range')"></div>
+                    <div class="stat-block"><label>Handle</label><input type="number" id="num-handle" class="stat-num-input" oninput="sync('handle','num')"><input type="range" id="st-handle" min="25" max="99" oninput="sync('handle','range')"></div>
+                    <div class="stat-block"><label>O-Reb</label><input type="number" id="num-oreb" class="stat-num-input" oninput="sync('oreb','num')"><input type="range" id="st-oreb" min="25" max="99" oninput="sync('oreb','range')"></div>
+                    <div class="stat-block"><label>FT</label><input type="number" id="num-ft" class="stat-num-input" oninput="sync('ft','num')"><input type="range" id="st-ft" min="25" max="99" oninput="sync('ft','range')"></div>
                 </div>
 
                 <div class="section-title">Defensive & Physical</div>
                 <div class="stat-grid">
-                    <div class="stat-block"><label>Int Def</label><span class="stat-val" id="val-intdef">50</span><input type="range" id="st-intdef" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Per Def</label><span class="stat-val" id="val-perdef">50</span><input type="range" id="st-perdef" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Steal</label><span class="stat-val" id="val-steal">50</span><input type="range" id="st-steal" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Block</label><span class="stat-val" id="val-block">50</span><input type="range" id="st-block" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Speed</label><span class="stat-val" id="val-speed">70</span><input type="range" id="st-speed" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Str</label><span class="stat-val" id="val-str">50</span><input type="range" id="st-str" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Vert</label><span class="stat-val" id="val-vert">70</span><input type="range" id="st-vert" min="25" max="99" oninput="savePlayer()"></div>
-                    <div class="stat-block"><label>Stam</label><span class="stat-val" id="val-stam">80</span><input type="range" id="st-stam" min="25" max="99" oninput="savePlayer()"></div>
+                    <div class="stat-block"><label>Int Def</label><input type="number" id="num-intdef" class="stat-num-input" oninput="sync('intdef','num')"><input type="range" id="st-intdef" min="25" max="99" oninput="sync('intdef','range')"></div>
+                    <div class="stat-block"><label>Per Def</label><input type="number" id="num-perdef" class="stat-num-input" oninput="sync('perdef','num')"><input type="range" id="st-perdef" min="25" max="99" oninput="sync('perdef','range')"></div>
+                    <div class="stat-block"><label>Steal</label><input type="number" id="num-steal" class="stat-num-input" oninput="sync('steal','num')"><input type="range" id="st-steal" min="25" max="99" oninput="sync('steal','range')"></div>
+                    <div class="stat-block"><label>Block</label><input type="number" id="num-block" class="stat-num-input" oninput="sync('block','num')"><input type="range" id="st-block" min="25" max="99" oninput="sync('block','range')"></div>
+                    <div class="stat-block"><label>Speed</label><input type="number" id="num-speed" class="stat-num-input" oninput="sync('speed','num')"><input type="range" id="st-speed" min="25" max="99" oninput="sync('speed','range')"></div>
+                    <div class="stat-block"><label>Str</label><input type="number" id="num-str" class="stat-num-input" oninput="sync('str','num')"><input type="range" id="st-str" min="25" max="99" oninput="sync('str','range')"></div>
+                    <div class="stat-block"><label>Vert</label><input type="number" id="num-vert" class="stat-num-input" oninput="sync('vert','num')"><input type="range" id="st-vert" min="25" max="99" oninput="sync('vert','range')"></div>
+                    <div class="stat-block"><label>Stam</label><input type="number" id="num-stam" class="stat-num-input" oninput="sync('stam','num')"><input type="range" id="st-stam" min="25" max="99" oninput="sync('stam','range')"></div>
                 </div>
             </div>
         </div>
@@ -224,7 +240,7 @@
             }
         };
 
-        let DB = JSON.parse(localStorage.getItem('bruzz_v5')) || {
+        let DB = JSON.parse(localStorage.getItem('bruzz_v5.1')) || {
             teams: [
                 {id:'t1', name:'The Bruzz', color:'#3b82f6', roster:[{...NEW_P, id:'p1', name:'My Player', stats:{...NEW_P.stats, speed:90, pt3:85}}]},
                 {id:'t2', name:'Varsity', color:'#ef4444', roster:[{...NEW_P, id:'p2', name:'Rival', num:23, stats:{...NEW_P.stats, speed:85}}]}
@@ -234,7 +250,7 @@
         let app = { screen:'menu', activeT:null, activeP:null, gameOn:false };
         let engine = { scene:null, paused:false, rigs:[] };
 
-        const save = () => localStorage.setItem('bruzz_v5', JSON.stringify(DB));
+        const save = () => localStorage.setItem('bruzz_v5.1', JSON.stringify(DB));
         const nav = (s) => {
             document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
             document.getElementById('screen-'+s).classList.add('active');
@@ -273,14 +289,15 @@
         function loadEditor() {
             const t = DB.teams.find(x=>x.id===app.activeT);
             const p = t.roster.find(x=>x.id===app.activeP);
-            if(!p.stats) p.stats = {...NEW_P.stats}; // migration safety
+            if(!p.stats) p.stats = {...NEW_P.stats}; 
             if(!p.acc) p.acc = {has:false, col:"#ffffff"};
 
             document.getElementById('player-editor').classList.add('active');
             
             // Basic
             setVal('ed-name', p.name); setVal('ed-num', p.num);
-            setVal('ed-h', p.h); setVal('ed-w', p.w || 50);
+            setVal('ed-h', p.h); 
+            setVal('st-w', p.w || 50); setVal('num-w', p.w || 50); // Weight Sync
             setVal('ed-skin', p.skin); setVal('ed-hair', p.hair || '#111111'); setVal('ed-shoe', p.shoes);
             
             // Acc
@@ -290,9 +307,21 @@
             // Stats loop
             for(const [k,v] of Object.entries(p.stats)) {
                 if(document.getElementById('st-'+k)) {
-                    setVal('st-'+k, v); document.getElementById('val-'+k).innerText = v;
+                    setVal('st-'+k, v); setVal('num-'+k, v); // Sync both
                 }
             }
+        }
+
+        function sync(id, source) {
+            // id is 'w' (weight) or stat key (e.g. 'layup')
+            // source is 'num' or 'range'
+            const numEl = document.getElementById('num-'+id);
+            const rngEl = document.getElementById(id === 'w' ? 'st-w' : 'st-'+id);
+            
+            if(source === 'num') rngEl.value = numEl.value;
+            else numEl.value = rngEl.value;
+            
+            savePlayer();
         }
 
         function savePlayer() {
@@ -300,7 +329,7 @@
             const p = t.roster.find(x=>x.id===app.activeP);
             
             p.name = getVal('ed-name'); p.num=parseInt(getVal('ed-num'));
-            p.h = parseInt(getVal('ed-h')); p.w = parseInt(getVal('ed-w'));
+            p.h = parseInt(getVal('ed-h')); p.w = parseInt(getVal('st-w')); // Read range logic
             p.skin = getVal('ed-skin'); p.hair = getVal('ed-hair'); p.shoes = getVal('ed-shoe');
             
             p.acc.has = document.getElementById('ed-acc-tog').checked;
@@ -309,7 +338,6 @@
             for(const k of Object.keys(p.stats)) {
                 if(document.getElementById('st-'+k)) {
                     p.stats[k] = parseInt(getVal('st-'+k));
-                    document.getElementById('val-'+k).innerText = p.stats[k];
                 }
             }
             save(); loadRoster();
@@ -379,7 +407,7 @@
             const spawn = (p, col, side) => {
                 const grp = new THREE.Group();
                 const s = p.h/75; grp.scale.set(s,s,s);
-                const w = 1 + (p.w? (p.w-50)/150 : 0); // Weight scaling width
+                const w = 1 + (p.w? (p.w-50)/150 : 0); 
                 
                 const matJ = new THREE.MeshStandardMaterial({color:col});
                 const matS = new THREE.MeshStandardMaterial({color:p.skin});
@@ -387,11 +415,8 @@
 
                 const torso = new THREE.Mesh(new THREE.BoxGeometry(1.5*w,2.4,0.8*w), matJ); torso.position.y=3.8; torso.castShadow=true; grp.add(torso);
                 const head = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.9,0.9), matS); head.position.y=5.5; head.castShadow=true; grp.add(head);
-                
-                // Hair (Top of head)
                 const hair = new THREE.Mesh(new THREE.BoxGeometry(0.82,0.2,0.92), matH); hair.position.y=6.0; grp.add(hair);
 
-                // Headband
                 if(p.acc && p.acc.has) {
                     const hb = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.08, 8, 16), new THREE.MeshStandardMaterial({color:p.acc.col}));
                     hb.rotation.x = Math.PI/2; hb.position.y = 5.8; hb.scale.set(1,1.2,1); grp.add(hb);
