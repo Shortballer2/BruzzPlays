@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basketball Scouting Game v5.1</title>
+    <title>Intramural Scouting Game v5.3</title>
     <style>
         :root { --blue: #3b82f6; --red: #ef4444; --dark: #0f172a; --panel: #18181b; --text: #f8fafc; --accent: #8b5cf6; }
         body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; user-select: none; }
@@ -91,7 +91,6 @@
         .stat-block:hover { border-color: #444; }
         .stat-block label { justify-content: center; margin-bottom: 2px; color: #888; font-size: 9px; }
         
-        /* New Number Input for Stats */
         .stat-num-input {
             width: 100% !important; border: none !important; background: transparent !important;
             text-align: center; font-size: 16px; font-weight: bold; color: white; padding: 2px !important; margin-bottom: 4px;
@@ -119,9 +118,9 @@
 <body>
 
     <div id="screen-menu" class="screen active">
-        <div class="hero-title">BASKETBALL<br><span style="color:var(--blue)">SCOUTING GAME</span></div>
-        <div class="hero-subtitle">GM MODE • STRATEGY • SIMULATION</div>
-        <button class="menu-btn primary" onclick="nav('gm')">GM Dashboard</button>
+        <div class="hero-title">INTRAMURAL<br><span style="color:var(--blue)">SCOUTING GAME</span></div>
+        <div class="hero-subtitle">COLLEGE LEAGUE SIMULATOR</div>
+        <button class="menu-btn primary" onclick="nav('gm')">League Dashboard</button>
         <button class="menu-btn" onclick="startMatchup()">Play Now</button>
         <button class="menu-btn" onclick="alert('Settings Saved')">Settings</button>
     </div>
@@ -130,7 +129,7 @@
         <button class="back-btn" onclick="nav('menu')">← Main Menu</button>
         
         <div class="gm-sidebar" style="padding-top: 60px;">
-            <div class="gm-header">League Teams</div>
+            <div class="gm-header">Intramural Teams</div>
             <div id="team-list-container"></div>
             <button onclick="addTeam()" style="margin-top:10px; width:100%; background: #222; border: 1px dashed #444; color: #888; padding: 10px; cursor: pointer; font-size:12px;">+ Create Expansion Team</button>
         </div>
@@ -164,12 +163,12 @@
 
                 <div class="section-title">Body & Appearance</div>
                 <div class="form-grid">
-                    <div class="control"><label>Height (in)</label><input type="number" id="ed-h" oninput="savePlayer()"></div>
+                    <div class="control"><label>Height (in)</label><input type="number" id="ed-h" oninput="savePlayer()" min="60" max="88"></div>
                     <div class="control">
-                        <label>Weight / Build</label>
+                        <label>Weight (lbs)</label>
                         <div style="display:flex; gap:5px;">
                             <input type="number" id="num-w" oninput="sync('w', 'num')" style="width:50px">
-                            <input type="range" id="st-w" min="0" max="100" oninput="sync('w', 'range')" style="flex:1">
+                            <input type="range" id="st-w" min="100" max="300" oninput="sync('w', 'range')" style="flex:1">
                         </div>
                     </div>
                 </div>
@@ -231,26 +230,27 @@
 
     <script>
         // --- 1. DATA ---
+        // Updated defaults for "Intramural" sizing (5'9" 160lbs avg)
         const NEW_P = { 
-            name:"Rookie", num:0, h:75, w:50, skin:"#8d5524", hair:"#111111", shoes:"#ffffff", 
+            name:"Rookie", num:0, h:69, w:160, skin:"#8d5524", hair:"#111111", shoes:"#ffffff", 
             acc:{has:false, col:"#ffffff"},
             stats:{
-                layup:70, dunk:50, mid:60, pt3:60, pass:60, handle:60, oreb:50, ft:70,
-                intdef:50, perdef:50, steal:50, block:50, speed:70, str:50, vert:70, stam:80
+                layup:65, dunk:30, mid:50, pt3:50, pass:50, handle:50, oreb:40, ft:60,
+                intdef:40, perdef:40, steal:40, block:30, speed:60, str:40, vert:50, stam:70
             }
         };
 
-        let DB = JSON.parse(localStorage.getItem('bruzz_v5.1')) || {
+        let DB = JSON.parse(localStorage.getItem('bruzz_v5.3')) || {
             teams: [
-                {id:'t1', name:'The Bruzz', color:'#3b82f6', roster:[{...NEW_P, id:'p1', name:'My Player', stats:{...NEW_P.stats, speed:90, pt3:85}}]},
-                {id:'t2', name:'Varsity', color:'#ef4444', roster:[{...NEW_P, id:'p2', name:'Rival', num:23, stats:{...NEW_P.stats, speed:85}}]}
+                {id:'t1', name:'The Bruzz', color:'#3b82f6', roster:[{...NEW_P, id:'p1', name:'Shane Mathis', h:62, w:140, stats:{...NEW_P.stats, speed:90, handle:85}}]},
+                {id:'t2', name:'Varsity Opps', color:'#ef4444', roster:[{...NEW_P, id:'p2', name:'Big Man', h:75, w:210, stats:{...NEW_P.stats, speed:50, str:80}}]}
             ]
         };
 
         let app = { screen:'menu', activeT:null, activeP:null, gameOn:false };
         let engine = { scene:null, paused:false, rigs:[] };
 
-        const save = () => localStorage.setItem('bruzz_v5.1', JSON.stringify(DB));
+        const save = () => localStorage.setItem('bruzz_v5.3', JSON.stringify(DB));
         const nav = (s) => {
             document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
             document.getElementById('screen-'+s).classList.add('active');
@@ -297,7 +297,7 @@
             // Basic
             setVal('ed-name', p.name); setVal('ed-num', p.num);
             setVal('ed-h', p.h); 
-            setVal('st-w', p.w || 50); setVal('num-w', p.w || 50); // Weight Sync
+            setVal('st-w', p.w || 160); setVal('num-w', p.w || 160);
             setVal('ed-skin', p.skin); setVal('ed-hair', p.hair || '#111111'); setVal('ed-shoe', p.shoes);
             
             // Acc
@@ -313,8 +313,6 @@
         }
 
         function sync(id, source) {
-            // id is 'w' (weight) or stat key (e.g. 'layup')
-            // source is 'num' or 'range'
             const numEl = document.getElementById('num-'+id);
             const rngEl = document.getElementById(id === 'w' ? 'st-w' : 'st-'+id);
             
@@ -329,7 +327,7 @@
             const p = t.roster.find(x=>x.id===app.activeP);
             
             p.name = getVal('ed-name'); p.num=parseInt(getVal('ed-num'));
-            p.h = parseInt(getVal('ed-h')); p.w = parseInt(getVal('st-w')); // Read range logic
+            p.h = parseInt(getVal('ed-h')); p.w = parseInt(getVal('st-w')); 
             p.skin = getVal('ed-skin'); p.hair = getVal('ed-hair'); p.shoes = getVal('ed-shoe');
             
             p.acc.has = document.getElementById('ed-acc-tog').checked;
@@ -406,8 +404,13 @@
             engine.rigs = [];
             const spawn = (p, col, side) => {
                 const grp = new THREE.Group();
-                const s = p.h/75; grp.scale.set(s,s,s);
-                const w = 1 + (p.w? (p.w-50)/150 : 0); 
+                // Height: 75 inches (6'3) = 1.0 scale. 62 inches (5'2) = 0.82 scale.
+                const s = p.h / 75; 
+                grp.scale.set(s,s,s);
+                
+                // Weight Logic: 160lbs = 1.0 Width. 
+                // 140lbs = ~0.9 width. 250lbs = ~1.4 width.
+                const w = 1 + ((p.w - 160)/200); 
                 
                 const matJ = new THREE.MeshStandardMaterial({color:col});
                 const matS = new THREE.MeshStandardMaterial({color:p.skin});
