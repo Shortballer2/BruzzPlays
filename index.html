@@ -2,388 +2,330 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Bruzz: GM Edition v3.1</title>
+    <title>The Bruzz 2K: v4.0 Full Suite</title>
     <style>
-        :root { --accent: #3b82f6; --bg: #050505; --panel: #0f1115; --border: 1px solid #2a2a2a; --text: #e2e8f0; }
-        body { margin: 0; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); user-select: none; }
+        :root { --blue: #3b82f6; --red: #ef4444; --dark: #0f172a; --panel: #1e293b; --text: #f8fafc; }
+        body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; user-select: none; }
         
-        /* LAYOUT */
-        #app-ui { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+        /* --- SCREENS --- */
+        .screen { position: absolute; inset: 0; display: none; flex-direction: column; }
+        .screen.active { display: flex; animation: fade 0.3s ease-out; }
+        @keyframes fade { from {opacity:0} to {opacity:1} }
+
+        /* --- 1. MAIN MENU SCREEN --- */
+        #screen-menu { 
+            background: linear-gradient(135deg, #0f172a 0%, #000000 100%); 
+            align-items: center; justify-content: center;
+        }
+        .hero-title { font-size: 80px; font-weight: 900; letter-spacing: -2px; line-height: 1; margin-bottom: 10px; text-shadow: 0 0 40px rgba(59, 130, 246, 0.4); }
+        .hero-subtitle { color: #64748b; font-size: 14px; letter-spacing: 4px; margin-bottom: 60px; font-weight: 700; }
         
-        /* TOP BAR */
-        .top-bar {
-            position: absolute; top: 0; left: 0; right: 0; height: 60px;
-            background: rgba(15, 17, 21, 0.95); border-bottom: var(--border);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
-            pointer-events: auto; backdrop-filter: blur(10px);
+        .menu-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.1); 
+            color: white; padding: 15px 60px; font-size: 18px; font-weight: 700; 
+            margin: 10px; cursor: pointer; transition: 0.2s; width: 300px; text-align: center;
+            text-transform: uppercase; letter-spacing: 1px;
         }
-        .logo { font-weight: 900; letter-spacing: 2px; font-size: 18px; color: white; }
-        .matchup-display { display: flex; gap: 20px; align-items: center; font-family: 'Courier New', monospace; font-weight: bold; font-size: 20px; }
+        .menu-btn:hover { background: white; color: black; transform: scale(1.05); }
+        .menu-btn.primary { background: var(--blue); border-color: var(--blue); }
+        .menu-btn.primary:hover { background: #2563eb; color: white; }
 
-        /* SIDEBAR */
-        .sidebar {
-            position: absolute; left: 0; top: 60px; bottom: 0; width: 260px;
-            background: rgba(10, 10, 12, 0.95); border-right: var(--border);
-            pointer-events: auto; display: flex; flex-direction: column;
-        }
-        .nav-header { padding: 20px; font-size: 11px; font-weight: bold; color: #555; text-transform: uppercase; letter-spacing: 1px; }
-        .nav-item {
-            padding: 15px 20px; cursor: pointer; border-left: 3px solid transparent; color: #888; transition: 0.2s; font-size: 13px; font-weight: 500;
-        }
-        .nav-item:hover { background: #1a1a1a; color: white; }
-        .nav-item.active { border-left-color: var(--accent); background: linear-gradient(90deg, #1e293b, transparent); color: white; }
-
-        /* PANELS */
-        .panel-container { position: absolute; left: 280px; top: 80px; width: 400px; bottom: 20px; pointer-events: none; }
-        .panel {
-            background: rgba(15, 17, 21, 0.98); border: var(--border); border-radius: 8px;
-            padding: 25px; pointer-events: auto; display: none; height: 100%; box-sizing: border-box;
-            box-shadow: 10px 10px 40px rgba(0,0,0,0.5); overflow-y: auto;
-        }
-        .panel.active { display: block; animation: slideRight 0.2s ease-out; }
-        @keyframes slideRight { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
-
-        /* UI ELEMENTS */
-        h2 { margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid #222; padding-bottom: 10px; }
-        h3 { font-size: 11px; color: #888; margin: 25px 0 10px 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; border-left: 2px solid #444; padding-left: 8px;}
+        /* --- 2. GM DASHBOARD --- */
+        #screen-gm { background: #111; flex-direction: row; }
         
-        .list-item {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px; background: #16181d; border: 1px solid #222; margin-bottom: 8px;
-            border-radius: 6px; cursor: pointer; transition: 0.2s;
-        }
-        .list-item:hover { border-color: #444; background: #1f2229; }
-        .list-item.selected { border-color: var(--accent); background: #1e293b; }
+        /* Sidebar */
+        .gm-sidebar { width: 300px; background: #0f1115; border-right: 1px solid #222; padding: 20px; display: flex; flex-direction: column; }
+        .gm-header { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 15px; text-transform: uppercase; }
         
-        .row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .col { flex: 1; }
-        label { display: block; font-size: 11px; color: #aaa; margin-bottom: 6px; font-weight: 600; display: flex; justify-content: space-between; }
+        .team-card { 
+            padding: 15px; background: #18181b; border: 1px solid #222; margin-bottom: 10px; 
+            cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 10px;
+        }
+        .team-card:hover { background: #27272a; }
+        .team-card.active { border-color: var(--blue); background: #1e293b; }
+        .color-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        /* Main Content */
+        .gm-content { flex: 1; padding: 40px; overflow-y: auto; display: flex; gap: 40px; }
         
-        input[type=text], input[type=number], select {
-            width: 100%; background: #0a0a0a; border: 1px solid #333; color: white;
-            padding: 10px; border-radius: 4px; font-family: inherit; font-size: 13px; box-sizing: border-box;
+        /* Roster Table */
+        .roster-panel { flex: 1; max-width: 600px; }
+        .player-row { 
+            display: flex; justify-content: space-between; padding: 12px; 
+            border-bottom: 1px solid #222; cursor: pointer; color: #94a3b8;
         }
-        input[type=color] { width: 100%; height: 40px; border: none; background: none; cursor: pointer; }
-        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 4px; background: #333; border-radius: 2px; }
-
-        button {
-            width: 100%; padding: 12px; background: #222; color: white; border: 1px solid #333;
-            border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px; margin-top: 10px;
+        .player-row:hover { background: #1a1a1a; color: white; }
+        .player-row.active { color: var(--blue); font-weight: bold; }
+        
+        /* Editor Panel */
+        .editor-panel { width: 350px; background: #18181b; padding: 25px; border-radius: 8px; border: 1px solid #333; height: fit-content; display: none; }
+        .editor-panel.active { display: block; }
+        
+        input[type=text], input[type=number] { 
+            background: #000; border: 1px solid #333; color: white; padding: 8px; width: 100%; margin-bottom: 15px; 
         }
-        button:hover { background: #333; }
-        button.primary { background: var(--accent); border-color: var(--accent); }
-        button.primary:hover { background: #2563eb; }
-        button.danger { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
+        label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        .stat-slider { width: 100%; margin-bottom: 15px; accent-color: var(--blue); cursor: pointer; }
 
-        .tag { font-size: 10px; padding: 2px 6px; background: #333; border-radius: 3px; color: #ccc; }
-        .back-btn { background:none; border:none; color:#666; text-align:left; padding:0; margin-bottom:15px; cursor: pointer; font-size: 12px; }
-        .back-btn:hover { color: white; background: none; }
+        /* --- 3. GAMEPLAY SCREEN --- */
+        #screen-game { background: #000; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        .game-ui { position: absolute; inset: 0; pointer-events: none; }
+        .scoreboard { 
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            display: flex; background: #111; padding: 10px 40px; border-radius: 0 0 10px 10px; gap: 40px;
+            border-bottom: 3px solid var(--blue);
+        }
+        .score-team { text-align: center; }
+        .score-val { font-size: 30px; font-weight: 800; font-family: monospace; }
+        
+        .pause-menu {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: none; align-items: center; justify-content: center; flex-direction: column; pointer-events: auto;
+        }
+        .pause-menu.active { display: flex; }
+
+        /* UTIL */
+        .back-btn { position: absolute; top: 20px; left: 20px; cursor: pointer; font-weight: bold; color: #666; font-size: 14px; background: none; border: none; }
+        .back-btn:hover { color: white; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.150.1/three.min.js"></script>
 </head>
 <body>
 
-    <div id="app-ui">
-        <div class="top-bar">
-            <div class="logo">BRUZZ <span style="color:var(--accent)">GM</span></div>
-            <div class="matchup-display">
-                <span style="color:#3b82f6" id="score-home">HOME</span>
-                <span style="font-size:12px; color:#444; margin:0 10px;">VS</span>
-                <span style="color:#ef4444" id="score-away">AWAY</span>
-            </div>
-            <div style="font-size:11px; color:#666;">v3.1</div>
+    <div id="screen-menu" class="screen active">
+        <div class="hero-title">THE BRUZZ <span style="color:var(--blue)">2K</span></div>
+        <div class="hero-subtitle">BASKETBALL SIMULATION SUITE</div>
+        
+        <button class="menu-btn primary" onclick="nav('gm')">League Manager</button>
+        <button class="menu-btn" onclick="startMatchup()">Play Now</button>
+        <button class="menu-btn" onclick="alert('Settings Saved')">Settings</button>
+    </div>
+
+    <div id="screen-gm" class="screen">
+        <button class="back-btn" onclick="nav('menu')">← MAIN MENU</button>
+        
+        <div class="gm-sidebar" style="padding-top: 60px;">
+            <div class="gm-header">My League</div>
+            <div id="team-list-container"></div>
+            <button onclick="addTeam()" style="margin-top:10px; background: #222; border: 1px dashed #444; color: #888; padding: 10px; cursor: pointer;">+ Create Team</button>
         </div>
 
-        <div class="sidebar">
-            <div class="nav-header">League</div>
-            <div class="nav-item active" onclick="nav('teams')">🛡️ Teams & Rosters</div>
-            <div class="nav-item" onclick="nav('matchup')">⚔️ Matchup</div>
-            <div class="nav-header">Simulation</div>
-            <div class="nav-item" onclick="nav('camera')">🎥 Broadcast Cam</div>
-            <div class="nav-item" onclick="nav('settings')">⚙️ Settings</div>
-        </div>
-
-        <div class="panel-container">
-            <div id="panel-teams" class="panel active">
-                <h2>League Database</h2>
-                <div id="team-list"></div>
-                <button onclick="addTeam()">+ New Team</button>
-
-                <div id="team-editor" style="display:none; margin-top:30px; border-top:1px solid #333; padding-top:20px;">
-                    <div class="row">
-                        <div class="col"><label>Name</label><input type="text" id="ed-t-name" oninput="saveTeam()"></div>
-                        <div class="col" style="flex:0.3"><label>Color</label><input type="color" id="ed-t-color" oninput="saveTeam()"></div>
-                    </div>
-                    <h3>Roster</h3>
-                    <div id="roster-list"></div>
-                    <button onclick="addPlayer()">+ Add Player</button>
-                    <button class="danger" onclick="delTeam()" style="margin-top:20px">Delete Team</button>
+        <div class="gm-content">
+            <div class="roster-panel" id="roster-view" style="display:none;">
+                <h1 id="team-title" style="margin:0 0 20px 0; font-size: 24px;">Team Name</h1>
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <input type="color" id="team-col-picker" style="width:40px; height:40px; border:none; cursor:pointer;" oninput="updateTeamMeta()">
+                    <input type="text" id="team-name-edit" style="font-size:18px; font-weight:bold; background:none; border:none; border-bottom:1px solid #333;" oninput="updateTeamMeta()">
                 </div>
+
+                <div class="gm-header">Active Roster</div>
+                <div id="roster-list"></div>
+                <button onclick="addPlayer()" style="margin-top:15px; background:var(--blue); color:white; border:none; padding:10px 20px; cursor:pointer;">+ Add Player</button>
+                <button onclick="deleteTeam()" style="margin-top:15px; margin-left:10px; background:#ef4444; color:white; border:none; padding:10px 20px; cursor:pointer;">Delete Team</button>
             </div>
 
-            <div id="panel-player" class="panel">
-                <button class="back-btn" onclick="closePlayerEdit()">← Back to Roster</button>
-                <h2 id="p-ed-header">Edit Player</h2>
+            <div class="editor-panel" id="player-editor">
+                <h2 style="margin-top:0; color:var(--blue); border-bottom:1px solid #333; padding-bottom:10px;">Edit Player</h2>
                 
-                <div class="row">
-                    <div class="col"><label>Name</label><input type="text" id="pe-name" oninput="savePlayer()"></div>
-                    <div class="col" style="flex:0.4"><label>#</label><input type="number" id="pe-num" oninput="savePlayer()"></div>
+                <label>Name</label><input type="text" id="ed-name" oninput="savePlayer()">
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label>Number</label><input type="number" id="ed-num" oninput="savePlayer()"></div>
+                    <div style="flex:1"><label>Height (in)</label><input type="number" id="ed-h" oninput="savePlayer()"></div>
                 </div>
 
-                <h3>Appearance</h3>
-                <div class="row">
-                    <div class="col"><label>Height: <span id="pe-h-val"></span></label><input type="range" id="pe-h" min="65" max="90" oninput="savePlayer()"></div>
-                </div>
-                <div class="row">
-                    <div class="col"><label>Skin</label><input type="color" id="pe-skin" oninput="savePlayer()"></div>
-                    <div class="col"><label>Shoes</label><input type="color" id="pe-shoe" oninput="savePlayer()"></div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="flex:1"><label>Skin</label><input type="color" id="ed-skin" style="width:100%; height:30px; border:none;" oninput="savePlayer()"></div>
+                    <div style="flex:1"><label>Shoes</label><input type="color" id="ed-shoe" style="width:100%; height:30px; border:none;" oninput="savePlayer()"></div>
                 </div>
 
-                <h3>Finishing & Shooting</h3>
-                <div class="row"><div class="col"><label>Layup <span><span id="v-layup"></span></span></label><input type="range" id="p-layup" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Dunk <span><span id="v-dunk"></span></span></label><input type="range" id="p-dunk" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Mid-Range <span><span id="v-mid"></span></span></label><input type="range" id="p-mid" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>3-Point <span><span id="v-3pt"></span></span></label><input type="range" id="p-3pt" min="25" max="99" oninput="savePlayer()"></div></div>
-
-                <h3>Playmaking</h3>
-                <div class="row"><div class="col"><label>Passing <span><span id="v-pass"></span></span></label><input type="range" id="p-pass" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Ball Handle <span><span id="v-handle"></span></span></label><input type="range" id="p-handle" min="25" max="99" oninput="savePlayer()"></div></div>
-
-                <h3>Defense</h3>
-                <div class="row"><div class="col"><label>Interior Def <span><span id="v-intdef"></span></span></label><input type="range" id="p-intdef" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Perimeter Def <span><span id="v-perdef"></span></span></label><input type="range" id="p-perdef" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Steal <span><span id="v-steal"></span></span></label><input type="range" id="p-steal" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Block <span><span id="v-block"></span></span></label><input type="range" id="p-block" min="25" max="99" oninput="savePlayer()"></div></div>
-
-                <h3>Athleticism</h3>
-                <div class="row"><div class="col"><label>Speed <span><span id="v-speed"></span></span></label><input type="range" id="p-speed" min="25" max="99" oninput="savePlayer()"></div></div>
-                <div class="row"><div class="col"><label>Strength <span><span id="v-str"></span></span></label><input type="range" id="p-str" min="25" max="99" oninput="savePlayer()"></div></div>
+                <label>Speed (Movement)</label><input type="range" class="stat-slider" id="st-spd" min="40" max="99" oninput="savePlayer()">
+                <label>Shooting (Accuracy)</label><input type="range" class="stat-slider" id="st-sht" min="40" max="99" oninput="savePlayer()">
+                <label>Defense (IQ)</label><input type="range" class="stat-slider" id="st-def" min="40" max="99" oninput="savePlayer()">
                 
-                <button class="danger" onclick="delPlayer()" style="margin-top:30px">Cut Player</button>
-            </div>
-
-            <div id="panel-matchup" class="panel">
-                <h2>Game Setup</h2>
-                <label>Home Team</label><select id="sel-home" onchange="updMatchup()"></select>
-                <label style="margin-top:15px">Away Team</label><select id="sel-away" onchange="updMatchup()"></select>
-                <div style="margin-top:20px; font-size:12px; color:#666; line-height:1.4">Matchup updates live on the court.</div>
-            </div>
-
-            <div id="panel-camera" class="panel">
-                <h2>Camera</h2>
-                <div class="list-item" onclick="setCam('broadcast')">📺 Broadcast</div>
-                <div class="list-item" onclick="setCam('2k')">🏀 2K View</div>
-                <div class="list-item" onclick="setCam('sky')">🦅 Skybox</div>
-                <div class="list-item" onclick="setCam('baseline')">📷 Baseline</div>
-            </div>
-            
-            <div id="panel-settings" class="panel">
-                <h2>Settings</h2>
-                <label>Game Speed</label><input type="range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="window.spd=parseFloat(this.value)">
-                <button class="danger" onclick="resetDB()" style="margin-top:30px">Factory Reset DB</button>
+                <button onclick="deletePlayer()" style="width:100%; background:#ef4444; color:white; border:none; padding:10px; margin-top:10px; cursor:pointer;">Cut Player</button>
             </div>
         </div>
     </div>
 
+    <div id="screen-game" class="screen">
+        <div class="game-ui">
+            <div class="scoreboard">
+                <div class="score-team">
+                    <div style="font-size:10px; color:#888; font-weight:bold;">HOME</div>
+                    <div class="score-val" style="color:var(--blue)" id="score-h">00</div>
+                </div>
+                <div class="score-team">
+                    <div style="font-size:10px; color:#888; font-weight:bold;">AWAY</div>
+                    <div class="score-val" style="color:var(--red)" id="score-a">00</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pause-menu" class="pause-menu">
+            <h1 style="font-size:40px; margin-bottom:20px;">PAUSED</h1>
+            <button class="menu-btn" onclick="togglePause()">Resume</button>
+            <button class="menu-btn" onclick="quitGame()">Quit to Menu</button>
+        </div>
+    </div>
+
     <script>
-        // --- 1. DATA MODEL (v3.1) ---
-        const NEW_PLAYER_TEMPLATE = {
-            name: "New Player", num: 0, h: 75, skin: "#a1665e", shoes: "#111111",
-            attrs: {
-                layup: 70, dunk: 50, mid: 60, pt3: 60,
-                pass: 60, handle: 60,
-                intDef: 50, perDef: 60, steal: 50, block: 40,
-                speed: 70, str: 50
-            }
-        };
-
-        const DEFAULT_DB = {
+        // --- 1. STATE & DB ---
+        const NEW_PLAYER = { name: "New Rookie", num: 0, h: 75, skin: "#8d5524", shoes: "#ffffff", stats: { spd: 70, sht: 70, def: 50 } };
+        
+        let DB = JSON.parse(localStorage.getItem('bruzz_2k_v4')) || {
             teams: [
-                { id: 't1', name: 'The Bruzz', color: '#3b82f6', roster: [
-                    { ...NEW_PLAYER_TEMPLATE, id: 'p1', name: 'My Player', h: 74, skin: '#8d5524', attrs: {...NEW_PLAYER_TEMPLATE.attrs, speed: 90, handle: 85, pt3: 82, dunk: 80} }
-                ]},
-                { id: 't2', name: 'Opponents', color: '#ef4444', roster: [
-                    { ...NEW_PLAYER_TEMPLATE, id: 'p2', name: 'Rival PG', num: 5, h: 73, skin: '#c68642', shoes:'#ff0000', attrs: {...NEW_PLAYER_TEMPLATE.attrs, speed: 92, steal: 85} }
-                ]}
-            ],
-            matchup: { home: 't1', away: 't2' }
+                { id: 't1', name: 'The Bruzz', color: '#3b82f6', roster: [{...NEW_PLAYER, id:'p1', name:'My Player', stats:{spd:90,sht:85,def:80}}] },
+                { id: 't2', name: 'Varsity', color: '#ef4444', roster: [{...NEW_PLAYER, id:'p2', name:'Opponent', num:23, stats:{spd:85,sht:80,def:70}}] }
+            ]
         };
 
-        let DB = JSON.parse(localStorage.getItem('bruzz_gm_v3.1')) || DEFAULT_DB;
-        let activeTeam = null;
-        let activePlayer = null;
-        window.spd = 1.0;
-        let camMode = 'broadcast';
+        let app = { screen: 'menu', activeTeam: null, activePlayer: null, gameRunning: false };
+        let engine = { scene:null, camera:null, renderer:null, rigs:[], paused: false };
 
-        function save() { localStorage.setItem('bruzz_gm_v3.1', JSON.stringify(DB)); refresh3D(); }
-        function resetDB() { localStorage.removeItem('bruzz_gm_v3.1'); location.reload(); }
+        // Save System
+        const save = () => localStorage.setItem('bruzz_2k_v4', JSON.stringify(DB));
 
-        // --- 2. UI LOGIC ---
-        function nav(p) {
-            document.querySelectorAll('.panel').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        // --- 2. NAVIGATION ---
+        function nav(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-'+screenId).classList.add('active');
+            app.screen = screenId;
             
-            // Logic Fix: If accessing teams, reset player view unless we are intentionally drilling down
-            if(p === 'teams' && !activePlayer) {
-                document.getElementById('panel-teams').classList.add('active');
-                renderTeams();
-            } else if (p === 'teams' && activePlayer) {
-                document.getElementById('panel-player').classList.add('active');
-            } else {
-                document.getElementById('panel-'+p).classList.add('active');
-                activePlayer = null; // Reset player focus if clicking other tabs
-            }
-            
-            if(event && event.target.classList.contains('nav-item')) event.target.classList.add('active');
-            if(p === 'matchup') renderMatchup();
+            if(screenId === 'gm') renderGM();
         }
 
-        // Teams & Rosters
-        function renderTeams() {
-            const list = document.getElementById('team-list'); list.innerHTML = '';
+        // --- 3. GM MODE LOGIC ---
+        function renderGM() {
+            const list = document.getElementById('team-list-container');
+            list.innerHTML = '';
+            
             DB.teams.forEach(t => {
-                const d = document.createElement('div');
-                d.className = `list-item ${activeTeam === t.id ? 'selected' : ''}`;
-                d.innerHTML = `<span style="font-weight:900; color:${t.color}">●</span> ${t.name} <span class="tag">${t.roster.length}</span>`;
-                d.onclick = () => { activeTeam = t.id; renderTeams(); renderTeamEd(); };
-                list.appendChild(d);
-            });
-            if(activeTeam) renderTeamEd(); else document.getElementById('team-editor').style.display = 'none';
-        }
-
-        function renderTeamEd() {
-            const t = DB.teams.find(x => x.id === activeTeam);
-            document.getElementById('team-editor').style.display = 'block';
-            document.getElementById('ed-t-name').value = t.name;
-            document.getElementById('ed-t-color').value = t.color;
-            const rList = document.getElementById('roster-list'); rList.innerHTML = '';
-            t.roster.forEach(p => {
-                const d = document.createElement('div');
-                d.className = 'list-item';
-                d.innerHTML = `<span><span class="tag">#${p.num}</span> ${p.name}</span> <span style="font-size:10px; color:#666">${Math.floor(p.h/12)}'${p.h%12}"</span>`;
-                d.onclick = () => { activePlayer = p.id; loadPlayer(); nav('teams'); };
-                rList.appendChild(d);
+                const el = document.createElement('div');
+                el.className = `team-card ${app.activeTeam === t.id ? 'active' : ''}`;
+                el.innerHTML = `<div class="color-dot" style="background:${t.color}"></div> <span>${t.name}</span>`;
+                el.onclick = () => { app.activeTeam = t.id; renderGM(); loadRosterView(); };
+                list.appendChild(el);
             });
         }
 
-        function saveTeam() {
-            const t = DB.teams.find(x => x.id === activeTeam);
-            t.name = document.getElementById('ed-t-name').value;
-            t.color = document.getElementById('ed-t-color').value;
-            save(); renderTeams();
-        }
-
-        function addTeam() { DB.teams.push({id:'t'+Date.now(), name:'New Team', color:'#ffffff', roster:[]}); save(); renderTeams(); }
-        function delTeam() { DB.teams = DB.teams.filter(t=>t.id!==activeTeam); activeTeam=null; save(); renderTeams(); }
-        function addPlayer() { 
-            const t = DB.teams.find(x=>x.id===activeTeam); 
-            t.roster.push({...NEW_PLAYER_TEMPLATE, id:'p'+Date.now(), attrs:{...NEW_PLAYER_TEMPLATE.attrs}}); 
-            save(); renderTeamEd(); 
-        }
-
-        // Player Editor (The Deep Part)
-        function loadPlayer() {
-            const t = DB.teams.find(x => x.id === activeTeam);
-            const p = t.roster.find(x => x.id === activePlayer);
-            if(!p.attrs) p.attrs = {...NEW_PLAYER_TEMPLATE.attrs}; // Migrator
-
-            document.getElementById('p-ed-header').innerText = "Editing " + p.name;
+        function loadRosterView() {
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            if(!t) return;
             
-            // Basics
-            setVal('pe-name', p.name); setVal('pe-num', p.num);
-            setVal('pe-h', p.h); document.getElementById('pe-h-val').innerText = `${Math.floor(p.h/12)}'${p.h%12}"`;
-            setVal('pe-skin', p.skin); setVal('pe-shoe', p.shoes);
+            document.getElementById('roster-view').style.display = 'block';
+            document.getElementById('team-title').innerText = t.name;
+            document.getElementById('team-name-edit').value = t.name;
+            document.getElementById('team-col-picker').value = t.color;
 
-            // Deep Stats
-            const map = {
-                'layup': p.attrs.layup, 'dunk': p.attrs.dunk, 'mid': p.attrs.mid, '3pt': p.attrs.pt3,
-                'pass': p.attrs.pass, 'handle': p.attrs.handle,
-                'intdef': p.attrs.intDef, 'perdef': p.attrs.perDef, 'steal': p.attrs.steal, 'block': p.attrs.block,
-                'speed': p.attrs.speed, 'str': p.attrs.str
-            };
+            const list = document.getElementById('roster-list');
+            list.innerHTML = '';
+            
+            t.roster.forEach(p => {
+                const el = document.createElement('div');
+                el.className = `player-row ${app.activePlayer === p.id ? 'active' : ''}`;
+                el.innerHTML = `<span>#${p.num} ${p.name}</span> <span>${Math.floor(p.h/12)}'${p.h%12}"</span>`;
+                el.onclick = () => { app.activePlayer = p.id; loadRosterView(); loadPlayerEditor(); };
+                list.appendChild(el);
+            });
+        }
 
-            for (const [key, val] of Object.entries(map)) {
-                setVal('p-'+key, val);
-                document.getElementById('v-'+key).innerText = val;
-            }
+        function loadPlayerEditor() {
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            const p = t.roster.find(x => x.id === app.activePlayer);
+            
+            document.getElementById('player-editor').classList.add('active');
+            
+            setVal('ed-name', p.name); setVal('ed-num', p.num); setVal('ed-h', p.h);
+            setVal('ed-skin', p.skin); setVal('ed-shoe', p.shoes);
+            setVal('st-spd', p.stats.spd); setVal('st-sht', p.stats.sht); setVal('st-def', p.stats.def);
         }
 
         function savePlayer() {
-            const t = DB.teams.find(x => x.id === activeTeam);
-            const p = t.roster.find(x => x.id === activePlayer);
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            const p = t.roster.find(x => x.id === app.activePlayer);
             
-            p.name = getVal('pe-name'); p.num = getVal('pe-num');
-            p.h = parseInt(getVal('pe-h')); p.skin = getVal('pe-skin'); p.shoes = getVal('pe-shoe');
-            document.getElementById('pe-h-val').innerText = `${Math.floor(p.h/12)}'${p.h%12}"`;
-
-            // Save Stats
-            p.attrs.layup = parseInt(getVal('p-layup')); document.getElementById('v-layup').innerText = p.attrs.layup;
-            p.attrs.dunk = parseInt(getVal('p-dunk')); document.getElementById('v-dunk').innerText = p.attrs.dunk;
-            p.attrs.mid = parseInt(getVal('p-mid')); document.getElementById('v-mid').innerText = p.attrs.mid;
-            p.attrs.pt3 = parseInt(getVal('p-3pt')); document.getElementById('v-3pt').innerText = p.attrs.pt3;
-            p.attrs.pass = parseInt(getVal('p-pass')); document.getElementById('v-pass').innerText = p.attrs.pass;
-            p.attrs.handle = parseInt(getVal('p-handle')); document.getElementById('v-handle').innerText = p.attrs.handle;
-            p.attrs.intDef = parseInt(getVal('p-intdef')); document.getElementById('v-intdef').innerText = p.attrs.intDef;
-            p.attrs.perDef = parseInt(getVal('p-perdef')); document.getElementById('v-perdef').innerText = p.attrs.perDef;
-            p.attrs.steal = parseInt(getVal('p-steal')); document.getElementById('v-steal').innerText = p.attrs.steal;
-            p.attrs.block = parseInt(getVal('p-block')); document.getElementById('v-block').innerText = p.attrs.block;
-            p.attrs.speed = parseInt(getVal('p-speed')); document.getElementById('v-speed').innerText = p.attrs.speed;
-            p.attrs.str = parseInt(getVal('p-str')); document.getElementById('v-str').innerText = p.attrs.str;
-
-            save();
+            p.name = getVal('ed-name'); p.num = parseInt(getVal('ed-num')); p.h = parseInt(getVal('ed-h'));
+            p.skin = getVal('ed-skin'); p.shoes = getVal('ed-shoe');
+            p.stats.spd = parseInt(getVal('st-spd')); p.stats.sht = parseInt(getVal('st-sht')); p.stats.def = parseInt(getVal('st-def'));
+            
+            save(); loadRosterView(); // Refresh list to show name changes
         }
 
-        function closePlayerEdit() { activePlayer = null; nav('teams'); }
-        function delPlayer() { 
-            const t = DB.teams.find(x=>x.id===activeTeam); 
-            t.roster = t.roster.filter(p=>p.id!==activePlayer); 
-            closePlayerEdit(); 
+        function updateTeamMeta() {
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            t.name = document.getElementById('team-name-edit').value;
+            t.color = document.getElementById('team-col-picker').value;
+            save(); renderGM(); document.getElementById('team-title').innerText = t.name;
+        }
+
+        function addTeam() { DB.teams.push({ id:'t'+Date.now(), name:'New Team', color:'#fff', roster:[] }); save(); renderGM(); }
+        function deleteTeam() { DB.teams = DB.teams.filter(t=>t.id!==app.activeTeam); app.activeTeam=null; document.getElementById('roster-view').style.display='none'; save(); renderGM(); }
+        function addPlayer() { 
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            t.roster.push({ ...NEW_PLAYER, id:'p'+Date.now(), stats:{...NEW_PLAYER.stats} });
+            save(); loadRosterView();
+        }
+        function deletePlayer() {
+            const t = DB.teams.find(x => x.id === app.activeTeam);
+            t.roster = t.roster.filter(p=>p.id!==app.activePlayer);
+            app.activePlayer=null; document.getElementById('player-editor').classList.remove('active');
+            save(); loadRosterView();
         }
 
         // Helpers
-        function setVal(id, v) { document.getElementById(id).value = v; }
-        function getVal(id) { return document.getElementById(id).value; }
-        
-        function renderMatchup() {
-            const h = document.getElementById('sel-home'); const a = document.getElementById('sel-away');
-            h.innerHTML=''; a.innerHTML='';
-            DB.teams.forEach(t => { h.add(new Option(t.name, t.id)); a.add(new Option(t.name, t.id)); });
-            h.value = DB.matchup.home; a.value = DB.matchup.away;
+        const setVal = (id,v) => document.getElementById(id).value = v;
+        const getVal = (id) => document.getElementById(id).value;
+
+        // --- 4. GAME ENGINE ---
+        function startMatchup() {
+            if(DB.teams.length < 2) return alert("You need at least 2 teams!");
+            nav('game');
+            initGame(DB.teams[0], DB.teams[1]);
         }
-        function updMatchup() { DB.matchup.home = document.getElementById('sel-home').value; DB.matchup.away = document.getElementById('sel-away').value; save(); }
-        function setCam(c) { camMode = c; }
+        
+        function quitGame() {
+            app.gameRunning = false;
+            document.querySelector('canvas').remove(); // Cleanup
+            nav('menu');
+        }
 
-        // --- 3. 3D ENGINE ---
-        let scene, camera, renderer, clock;
-        let rigs = [];
+        function togglePause() {
+            engine.paused = !engine.paused;
+            document.getElementById('pause-menu').classList.toggle('active');
+        }
 
-        function init3D() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x050505);
-            scene.fog = new THREE.Fog(0x050505, 30, 150);
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({antialias:true});
+        function initGame(homeTeam, awayTeam) {
+            app.gameRunning = true; engine.paused = false;
+            
+            // Setup ThreeJS
+            const scene = new THREE.Scene(); scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.Fog(0x050505, 30, 120);
+            
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 40, 60); camera.lookAt(0,0,0);
+            
+            const renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
-            document.body.appendChild(renderer.domElement);
-            clock = new THREE.Clock();
+            document.getElementById('screen-game').appendChild(renderer.domElement);
 
-            // Lighting
+            // Lights
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            const spot = new THREE.SpotLight(0xffffff, 1.2);
-            spot.position.set(20, 80, 40); spot.castShadow = true;
+            const spot = new THREE.SpotLight(0xffffff, 1); spot.position.set(20,80,40); spot.castShadow=true; 
             spot.shadow.mapSize.set(2048,2048); scene.add(spot);
 
             // Court
-            const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048;
-            const ctx = cvs.getContext('2d');
-            ctx.fillStyle='#cea07e'; ctx.fillRect(0,0,1024,2048);
-            ctx.fillStyle='rgba(0,0,0,0.05)'; for(let i=0;i<2048;i+=10) ctx.fillRect(0,i,1024,2);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshStandardMaterial({color:0x222}));
+            floor.rotation.x = -Math.PI/2; floor.position.y = -0.1; scene.add(floor);
+            
+            const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048; const ctx = cvs.getContext('2d');
+            ctx.fillStyle='#dcb388'; ctx.fillRect(0,0,1024,2048);
             ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380);
-            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948);
-            ctx.beginPath(); ctx.arc(512,140,400,0,Math.PI); ctx.stroke();
+            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948); ctx.beginPath(); ctx.arc(512,140,400,0,Math.PI); ctx.stroke();
             const tex = new THREE.CanvasTexture(cvs); tex.anisotropy=16;
-            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.4}));
+            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex}));
             court.rotation.x = -Math.PI/2; court.receiveShadow=true; scene.add(court);
 
             // Hoop
@@ -392,95 +334,69 @@
             const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,16), new THREE.MeshStandardMaterial({color:'orange'}));
             rim.rotation.x = Math.PI/2; rim.position.set(0,11,-41); scene.add(rim);
 
-            refresh3D();
+            // Spawn Players
+            engine.rigs = [];
+            
+            const spawn = (p, color, side) => {
+                const grp = new THREE.Group();
+                const s = p.h / 75; grp.scale.set(s,s,s);
+                
+                const matJ = new THREE.MeshStandardMaterial({color:color});
+                const matS = new THREE.MeshStandardMaterial({color:p.skin});
+                
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.5,2.4,0.8), matJ); torso.position.y=3.8; torso.castShadow=true; grp.add(torso);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.9,0.9), matS); head.position.y=5.5; head.castShadow=true; grp.add(head);
+                
+                // Limbs (Simple)
+                const legL = new THREE.Mesh(new THREE.BoxGeometry(0.5,2,0.5), matJ); legL.position.set(-0.5,1,0); grp.add(legL);
+                const legR = new THREE.Mesh(new THREE.BoxGeometry(0.5,2,0.5), matJ); legR.position.set(0.5,1,0); grp.add(legR);
+                
+                const z = side==='home' ? 10 : -10;
+                grp.position.set((Math.random()-0.5)*20, 0, z);
+                scene.add(grp);
+                
+                engine.rigs.push({ mesh: grp, p: p, limbs: {legL, legR} });
+            };
+
+            homeTeam.roster.forEach(p => spawn(p, homeTeam.color, 'home'));
+            awayTeam.roster.forEach(p => spawn(p, awayTeam.color, 'away'));
+
+            // Loop
+            const clock = new THREE.Clock();
+            const keys = {};
+            window.onkeydown=e=>{ if(e.key==='Escape') togglePause(); keys[e.key.toLowerCase()]=true; };
+            window.onkeyup=e=>keys[e.key.toLowerCase()]=false;
+
+            function animate() {
+                if(!app.gameRunning) return;
+                requestAnimationFrame(animate);
+                if(engine.paused) return;
+
+                const dt = clock.getDelta();
+                const t = Date.now()*0.001;
+                
+                // Controls (First Rig)
+                if(engine.rigs.length>0) {
+                    const u = engine.rigs[0];
+                    const spd = (u.p.stats.spd/8) * dt;
+                    if(keys.w) u.mesh.position.z -= spd; if(keys.s) u.mesh.position.z += spd;
+                    if(keys.a) u.mesh.position.x -= spd; if(keys.d) u.mesh.position.x += spd;
+                    
+                    camera.position.x += (20+u.mesh.position.x*0.3 - camera.position.x)*0.1;
+                    camera.position.z += (u.mesh.position.z*0.1 - camera.position.z)*0.1;
+                    camera.lookAt(u.mesh.position.x, 0, u.mesh.position.z);
+                }
+
+                // Animate
+                engine.rigs.forEach(r => {
+                    r.limbs.legL.rotation.x = Math.sin(t*10 + r.mesh.position.x);
+                    r.limbs.legR.rotation.x = Math.cos(t*10 + r.mesh.position.x);
+                });
+
+                renderer.render(scene, camera);
+            }
             animate();
         }
-
-        function createRig(p, color) {
-            const g = new THREE.Group();
-            const s = p.h / 75; g.scale.set(s,s,s);
-            
-            const matJ = new THREE.MeshStandardMaterial({color: color});
-            const matS = new THREE.MeshStandardMaterial({color: p.skin});
-            const matF = new THREE.MeshStandardMaterial({color: p.shoes});
-
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6,2.4,0.9), matJ); torso.position.y=3.8; torso.castShadow=true; g.add(torso);
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.85,1.0,0.95), matS); head.position.y=5.5; head.castShadow=true; g.add(head);
-            
-            // Legs
-            const legGeo = new THREE.BoxGeometry(0.6,1.8,0.6);
-            const lLeg = new THREE.Group(); lLeg.position.set(-0.5,2.6,0);
-            lLeg.add(new THREE.Mesh(legGeo, matJ).translateY(-0.9));
-            lLeg.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,1.8,0.5), matS).translateY(-2.7));
-            lLeg.add(new THREE.Mesh(new THREE.BoxGeometry(0.6,0.4,1.0), matF).translateY(-3.7).translateZ(0.2));
-            g.add(lLeg); const rLeg = lLeg.clone(); rLeg.position.set(0.5,2.6,0); g.add(rLeg);
-
-            // Arms
-            const armGeo = new THREE.BoxGeometry(0.45,2.2,0.45);
-            const lArm = new THREE.Mesh(armGeo, matS); lArm.position.set(-1.2,4.5,0); g.add(lArm);
-            const rArm = new THREE.Mesh(armGeo, matS); rArm.position.set(1.2,4.5,0); g.add(rArm);
-
-            g.position.set((Math.random()-0.5)*20, 0, (Math.random()-0.5)*20);
-            return { mesh: g, p: p, limbs: {lLeg, rLeg, lArm, rArm, torso} };
-        }
-
-        function refresh3D() {
-            rigs.forEach(r => scene.remove(r.mesh)); rigs = [];
-            const h = DB.teams.find(t=>t.id===DB.matchup.home);
-            const a = DB.teams.find(t=>t.id===DB.matchup.away);
-            
-            if(h) {
-                document.getElementById('score-home').innerText = h.name.toUpperCase();
-                document.getElementById('score-home').style.color = h.color;
-                h.roster.forEach(p => { const r=createRig(p, h.color); scene.add(r.mesh); rigs.push(r); });
-            }
-            if(a) {
-                document.getElementById('score-away').innerText = a.name.toUpperCase();
-                document.getElementById('score-away').style.color = a.color;
-                a.roster.forEach(p => { const r=createRig(p, a.color); scene.add(r.mesh); rigs.push(r); });
-            }
-        }
-
-        const keys = {w:false, a:false, s:false, d:false};
-        window.onkeydown=e=>keys[e.key.toLowerCase()]=true; window.onkeyup=e=>keys[e.key.toLowerCase()]=false;
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const dt = clock.getDelta();
-            const time = Date.now()*0.001;
-
-            // User Control (First player in rig list)
-            if(rigs.length > 0) {
-                const u = rigs[0];
-                const stats = u.p.attrs || NEW_PLAYER_TEMPLATE.attrs;
-                const spd = (stats.speed / 7) * window.spd * dt; // Speed stat affects movement
-                
-                if(keys.w) u.mesh.position.z -= spd; if(keys.s) u.mesh.position.z += spd;
-                if(keys.a) u.mesh.position.x -= spd; if(keys.d) u.mesh.position.x += spd;
-
-                // Cam
-                if(camMode==='broadcast'){
-                    camera.position.x += (25+u.mesh.position.x*0.2 - camera.position.x)*0.1;
-                    camera.position.z += (u.mesh.position.z*0.1 - camera.position.z)*0.1;
-                    camera.position.y=35; camera.lookAt(u.mesh.position.x,0,u.mesh.position.z);
-                } else if(camMode==='2k'){
-                    camera.position.x += (u.mesh.position.x-camera.position.x)*0.1;
-                    camera.position.z += ((u.mesh.position.z+25)-camera.position.z)*0.1;
-                    camera.position.y=15; camera.lookAt(u.mesh.position.x,5,u.mesh.position.z-15);
-                } else if(camMode==='sky') { camera.position.set(0,80,5); camera.lookAt(0,0,0); } 
-                else { camera.position.set(0,5,50); camera.lookAt(u.mesh.position); }
-            }
-
-            rigs.forEach(r => {
-                // Animation Logic
-                const l = r.limbs;
-                l.torso.position.y = 3.8 + Math.sin(time*2 + r.mesh.position.x)*0.05; // Breath
-            });
-            renderer.render(scene, camera);
-        }
-
-        init3D();
-        nav('teams');
 
     </script>
 </body>
