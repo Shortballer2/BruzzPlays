@@ -96,4 +96,372 @@
             // Game Logic State
             const gameState = useRef({
                 players: [
-                    { id: 0, x: 0, z: 25, team: 'us', role: 'PG', color: 0x3b82f6, targetX: 0, targetZ:
+                    { id: 0, x: 0, z: 25, team: 'us', role: 'PG', color: 0x3b82f6, targetX: 0, targetZ: 0 },
+                    { id: 1, x: -15, z: 10, team: 'us', role: 'SG', color: 0x60a5fa, targetX: -15, targetZ: 10 },
+                    { id: 2, x: 15, z: 10, team: 'us', role: 'SF', color: 0x60a5fa, targetX: 15, targetZ: 10 },
+                    { id: 5, x: 0, z: 15, team: 'them', role: 'DEF_PG', color: 0xef4444, targetX: 0, targetZ: 15 }, // Guarding Player
+                    { id: 6, x: -12, z: 8, team: 'them', role: 'DEF_SG', color: 0xfca5a5, targetX: 0, targetZ: 0 },
+                ],
+                ball: { x: 0, y: 2, z: 24, owner: 0 },
+                keys: {},
+                time: 0
+            });
+
+            // Refs for Three.js objects to update them without re-rendering React
+            const sceneRefs = useRef({ players: [], ball: null });
+
+            const resetGame = () => {
+                const s = gameState.current;
+                s.players[0].x = 0; s.players[0].z = 25;
+                s.players[1].x = -15; s.players[1].z = 10;
+                s.players[2].x = 15; s.players[2].z = 10;
+                s.players[5].x = 0; s.players[5].z = 15;
+            };
+
+            useEffect(() => {
+                // --- SETUP THREE.JS ---
+                const scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0f172a); 
+                scene.fog = new THREE.Fog(0x0f172a, 30, 90);
+
+                const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 30, 60);
+                camera.lookAt(0, 0, 0);
+
+                const renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                mountRef.current.appendChild(renderer.domElement);
+
+                // Lights
+                const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambient);
+                const spot = new THREE.SpotLight(0xffffff, 1);
+                spot.position.set(0, 50, 10);
+                spot.castShadow = true;
+                scene.add(spot);
+
+                // Court
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.1 });
+                const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), floorMat);
+                floor.rotation.x = -Math.PI/2;
+                floor.position.y = -0.1;
+                scene.add(floor);
+
+                const courtMat = new THREE.MeshStandardMaterial({ color: 0xc27844, roughness: 0.3 });
+                const court = new THREE.Mesh(new THREE.PlaneGeometry(50, 94), courtMat);
+                court.rotation.x = -Math.PI/2;
+                court.receiveShadow = true;
+                scene.add(court);
+
+                // Hoop
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,15), new THREE.MeshStandardMaterial({color:0x333}));
+                pole.position.set(0, 7.5, 45);
+                scene.add(pole);
+                const board = new THREE.Mesh(new THREE.BoxGeometry(6,4,0.2), new THREE.MeshStandardMaterial({color:0xffffff}));
+                board.position.set(0, 13, 44);
+                scene.add(board);
+                const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,8,16), new THREE.MeshStandardMaterial({color:0xff4500}));
+                rim.rotation.x = Math.PI/2;
+                rim.position.set(0, 11, 42.5);
+                scene.add(rim);
+
+                // Init Players
+                const pGeo = new THREE.CapsuleGeometry(1, 4, 4, 8);
+                gameState.current.players.forEach(p => {
+                    const mat = new THREE.MeshStandardMaterial({ color: p.color });
+                    const mesh = new THREE.Mesh(pGeo, mat);
+                    mesh.castShadow = true;
+                    mesh.position.set(p.x, 2, p.z);
+                    scene.add(mesh);
+                    sceneRefs.current.players.push({ mesh, id: p.id });
+                });
+
+                // Init Ball
+                const bGeo = new THREE.SphereGeometry(0.8);
+                const bMat = new THREE.MeshStandardMaterial({ color: 0xf97316 });
+                const ballMesh = new THREE.Mesh(bGeo, bMat);
+                ballMesh.castShadow = true;
+                scene.add(ballMesh);
+                sceneRefs.current.ball = ballMesh;
+
+                // Input
+                const kd = (e) => gameState.current.keys[e.key.toLowerCase()] = true;
+                const ku = (e) => gameState.current.keys[e.key.toLowerCase()] = false;
+                window.addEventListener('keydown', kd);
+                window.addEventListener('keyup', ku);
+
+                // --- AI ENGINE ---
+                const updateAI = (dt, s, config) => {
+                    // Logic: Realistic Spacing & Defense
+                    // 1. Get Ball Handler (Player 0 for now)
+                    const ballHandler = s.players[0];
+
+                    s.players.forEach(p => {
+                        if (p.id === 0) return; // Skip human
+
+                        // TEAMMATES (US): Spacing Logic
+                        if (p.team === 'us') {
+                            // Simple rule: Stay on the perimeter, mirror the ball
+                            // If ball is left, go right-ish. 
+                            let idealX = p.id === 1 ? -20 : 20; 
+                            let idealZ = ballHandler.z - 5; 
+                            
+                            // "Lerp" towards ideal position (smooth movement)
+                            // AI Speed depends on slider
+                            const moveSpeed = 8.0 * config.speed * dt;
+                            p.x += (idealX - p.x) * 2 * dt * config.speed;
+                            p.z += (idealZ - p.z) * 2 * dt * config.speed;
+                        }
+
+                        // DEFENDERS (THEM): Defensive Stance Logic
+                        if (p.team === 'them') {
+                            let target;
+                            if (p.role === 'DEF_PG') target = s.players[0]; // Guard Human
+                            else target = s.players[1]; // Guard SG
+
+                            // Vector from Hoop to Target
+                            const hoopX = 0, hoopZ = 45;
+                            const dx = target.x - hoopX;
+                            const dz = target.z - hoopZ;
+                            
+                            // "Sag" calculation: The lower the aggression, the further back they sag
+                            const sagFactor = 1 - (config.aggression / 150); 
+                            
+                            // Ideal defensive spot: Between man and hoop
+                            const idealX = hoopX + dx * sagFactor;
+                            const idealZ = hoopZ + dz * sagFactor;
+
+                            // Reaction Time Delay (IQ Slider)
+                            // Lower IQ = Slower reaction to changes
+                            const reactionSpeed = (config.iq / 100) * 10 * config.speed * dt;
+
+                            p.x += (idealX - p.x) * reactionSpeed;
+                            p.z += (idealZ - p.z) * reactionSpeed;
+                            
+                            // Face the player (Look logic handled in render)
+                        }
+                    });
+                };
+
+                // --- MAIN LOOP ---
+                let lastTime = 0;
+                const animate = (time) => {
+                    requestAnimationFrame(animate);
+                    const dt = (time - lastTime) / 1000 || 0;
+                    lastTime = time;
+
+                    const s = gameState.current;
+                    const config = settings; // Read current slider values
+
+                    // 1. HUMAN MOVEMENT
+                    const user = s.players[0];
+                    let speed = 10 * config.speed * dt;
+                    if(s.keys['shift']) speed *= 1.5;
+
+                    if(s.keys['w']) user.z -= speed;
+                    if(s.keys['s']) user.z += speed;
+                    if(s.keys['a']) user.x -= speed;
+                    if(s.keys['d']) user.x += speed;
+
+                    // Boundaries
+                    if(user.x < -24) user.x = -24; if(user.x > 24) user.x = 24;
+                    if(user.z < -40) user.z = -40; if(user.z > 45) user.z = 45;
+
+                    // 2. RUN AI
+                    updateAI(dt, s, config);
+
+                    // 3. UPDATE VISUALS
+                    sceneRefs.current.players.forEach(ref => {
+                        const pData = s.players.find(p => p.id === ref.id);
+                        if(pData) {
+                            ref.mesh.position.x = pData.x;
+                            ref.mesh.position.z = pData.z;
+                            
+                            // APPLY HEIGHT (Scale Y)
+                            ref.mesh.scale.y = config.height;
+                            ref.mesh.position.y = 2 * config.height; // Adjust pivot so feet stay on ground
+
+                            // "Breathing" animation
+                            const breath = Math.sin(time * 0.005) * 0.05;
+                            ref.mesh.scale.x = 1 + breath;
+                            ref.mesh.scale.z = 1 + breath;
+                        }
+                    });
+
+                    // Ball Follow
+                    const ballOwner = s.players[s.ball.owner];
+                    const ball = sceneRefs.current.ball;
+                    ball.position.x = ballOwner.x + 0.5;
+                    ball.position.z = ballOwner.z + 1.5;
+                    // Dribble animation speed scales with player speed
+                    ball.position.y = (2 * config.height) + Math.abs(Math.sin(time * 0.01 * (config.speed*2))) * 3;
+
+                    // Camera Smooth Follow
+                    camera.position.x += (user.x * 0.3 - camera.position.x) * 0.1;
+                    camera.lookAt(0, 0, 0);
+
+                    renderer.render(scene, camera);
+                };
+                animate(0);
+
+                return () => {
+                    mountRef.current.removeChild(renderer.domElement);
+                    window.removeEventListener('keydown', kd);
+                    window.removeEventListener('keyup', ku);
+                }
+            }, [settings]); // Re-run effect if settings change structure (optimization: use ref for settings inside loop)
+
+            // FIX: We need settings inside the loop without restarting the loop. 
+            // The useEffect above restarts on settings change which is jerky.
+            // Let's use a Ref for settings to access inside the loop smoothly.
+            const settingsRef = useRef(settings);
+            useEffect(() => { settingsRef.current = settings; }, [settings]);
+            
+            // ... Actually, restarting the effect is fine for v0.3 simplicity, 
+            // but for "very realistic" smooth sliders, we should modify the loop to read from ref.
+            // (The code above uses `const config = settings` inside animate, but animate closes over the initial render scope
+            // unless we use a Ref. I will patch the loop logic below in the final output to be correct).
+
+            return <div ref={mountRef} />;
+        }
+
+        // --- ROOT ---
+        function App() {
+            const [settings, setSettings] = useState({ speed: 1.0, height: 1.0, iq: 80, aggression: 50 });
+            // We need a key to force reset if needed, but for sliders we pass state down
+            return (
+                <div>
+                    <GameOverlay settings={settings} setSettings={setSettings} resetGame={() => window.location.reload()} />
+                    {/* We pass settings to Game3D but need to ensure it reads fresh values */}
+                    <Game3DWrapper settings={settings} />
+                </div>
+            );
+        }
+
+        // Wrapper to handle the Ref logic cleanly
+        function Game3DWrapper({ settings }) {
+            const settingsRef = useRef(settings);
+            useEffect(() => { settingsRef.current = settings; }, [settings]);
+            
+            // We duplicate the Game3D logic here to simplify the single-file structure 
+            // and ensure the loop reads `settingsRef.current`
+            
+            const mountRef = useRef(null);
+            const gameState = useRef({
+                players: [
+                    { id: 0, x: 0, z: 25, team: 'us', role: 'PG', color: 0x3b82f6 },
+                    { id: 1, x: -15, z: 10, team: 'us', role: 'SG', color: 0x60a5fa },
+                    { id: 2, x: 15, z: 10, team: 'us', role: 'SF', color: 0x60a5fa },
+                    { id: 5, x: 0, z: 15, team: 'them', role: 'DEF', color: 0xef4444 },
+                ],
+                ball: { owner: 0 },
+                keys: {}
+            });
+            const sceneRef = useRef(null); // Store meshes
+
+            useEffect(() => {
+                // SETUP
+                const scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0f172a);
+                const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 35, 65); camera.lookAt(0,0,0);
+                const renderer = new THREE.WebGLRenderer({antialias:true});
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                mountRef.current.appendChild(renderer.domElement);
+
+                // LIGHTS & COURT
+                scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                const spot = new THREE.SpotLight(0xffffff, 1);
+                spot.position.set(10, 50, 20); spot.castShadow = true; scene.add(spot);
+                
+                const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 100), new THREE.MeshStandardMaterial({color:0xd97736}));
+                floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+                
+                // HOOP
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,14), new THREE.MeshStandardMaterial({color:0x333}));
+                pole.position.set(0,7,45); scene.add(pole);
+                const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,8,16), new THREE.MeshStandardMaterial({color:'orange'}));
+                rim.rotation.x = Math.PI/2; rim.position.set(0,11,43.5); scene.add(rim);
+
+                // MESHES
+                const meshes = [];
+                const pGeo = new THREE.CapsuleGeometry(1, 4, 4, 8);
+                gameState.current.players.forEach(p => {
+                    const m = new THREE.Mesh(pGeo, new THREE.MeshStandardMaterial({color: p.color}));
+                    m.position.set(p.x, 2, p.z); m.castShadow = true;
+                    scene.add(m);
+                    meshes.push({mesh: m, id: p.id});
+                });
+                
+                const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8), new THREE.MeshStandardMaterial({color:'orange'}));
+                scene.add(bMesh);
+
+                // CONTROLS
+                const kd = (e) => gameState.current.keys[e.key.toLowerCase()] = true;
+                const ku = (e) => gameState.current.keys[e.key.toLowerCase()] = false;
+                window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
+
+                // LOOP
+                let lastT = 0;
+                const loop = (t) => {
+                    requestAnimationFrame(loop);
+                    const dt = (t - lastT)/1000; lastT = t;
+                    const s = gameState.current;
+                    const cfg = settingsRef.current; // READ LIVE SETTINGS
+
+                    // 1. Player
+                    const p0 = s.players[0];
+                    let spd = 12 * cfg.speed * dt;
+                    if(s.keys['w']) p0.z -= spd; if(s.keys['s']) p0.z += spd;
+                    if(s.keys['a']) p0.x -= spd; if(s.keys['d']) p0.x += spd;
+                    
+                    // 2. AI (Simple realistic logic)
+                    s.players.forEach(p => {
+                        if(p.id === 0) return;
+                        
+                        // Defender Logic
+                        if(p.team === 'them') {
+                            const target = s.players[0]; // Guard player 0
+                            const dist = Math.hypot(p.x - target.x, p.z - target.z);
+                            
+                            // Aggression Logic: If high aggro, get close. If low, sag off.
+                            const buffer = 15 - (cfg.aggression / 10); 
+                            
+                            // Vector math to stay between player and hoop (0, 45)
+                            const goalX = target.x * 0.8; // Cheat towards hoop
+                            const goalZ = target.z + buffer; 
+                            
+                            // Reaction lag (IQ)
+                            const lerp = (cfg.iq / 100) * 5 * dt;
+                            p.x += (goalX - p.x) * lerp;
+                            p.z += (goalZ - p.z) * lerp;
+                        }
+                    });
+
+                    // 3. Update Meshes
+                    meshes.forEach(item => {
+                        const p = s.players.find(x => x.id === item.id);
+                        item.mesh.position.set(p.x, 2 * cfg.height, p.z);
+                        item.mesh.scale.set(1, cfg.height, 1); // HEIGHT SCALE
+                    });
+                    
+                    // Ball
+                    bMesh.position.set(p0.x + 0.5, (2*cfg.height) + Math.abs(Math.sin(t*0.005))*3, p0.z + 1.5);
+                    
+                    renderer.render(scene, camera);
+                };
+                loop(0);
+
+                return () => mountRef.current.innerHTML = '';
+            }, []); // Run once
+            
+            return <div ref={mountRef} />;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
