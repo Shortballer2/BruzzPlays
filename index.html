@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Intramural Scouting Game v5.3</title>
+    <title>Intramural Scouting Game v5.4</title>
     <style>
         :root { --blue: #3b82f6; --red: #ef4444; --dark: #0f172a; --panel: #18181b; --text: #f8fafc; --accent: #8b5cf6; }
         body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; user-select: none; }
@@ -192,7 +192,7 @@
                     <div class="stat-block"><label>Layup</label><input type="number" id="num-layup" class="stat-num-input" oninput="sync('layup','num')"><input type="range" id="st-layup" min="25" max="99" oninput="sync('layup','range')"></div>
                     <div class="stat-block"><label>Dunk</label><input type="number" id="num-dunk" class="stat-num-input" oninput="sync('dunk','num')"><input type="range" id="st-dunk" min="25" max="99" oninput="sync('dunk','range')"></div>
                     <div class="stat-block"><label>Mid</label><input type="number" id="num-mid" class="stat-num-input" oninput="sync('mid','num')"><input type="range" id="st-mid" min="25" max="99" oninput="sync('mid','range')"></div>
-                    <div class="stat-block"><label>3PT</label><input type="number" id="num-3pt" class="stat-num-input" oninput="sync('3pt','num')"><input type="range" id="st-3pt" min="25" max="99" oninput="sync('3pt','range')"></div>
+                    <div class="stat-block"><label>3PT</label><input type="number" id="num-pt3" class="stat-num-input" oninput="sync('pt3','num')"><input type="range" id="st-pt3" min="25" max="99" oninput="sync('pt3','range')"></div>
                     <div class="stat-block"><label>Pass</label><input type="number" id="num-pass" class="stat-num-input" oninput="sync('pass','num')"><input type="range" id="st-pass" min="25" max="99" oninput="sync('pass','range')"></div>
                     <div class="stat-block"><label>Handle</label><input type="number" id="num-handle" class="stat-num-input" oninput="sync('handle','num')"><input type="range" id="st-handle" min="25" max="99" oninput="sync('handle','range')"></div>
                     <div class="stat-block"><label>O-Reb</label><input type="number" id="num-oreb" class="stat-num-input" oninput="sync('oreb','num')"><input type="range" id="st-oreb" min="25" max="99" oninput="sync('oreb','range')"></div>
@@ -230,7 +230,6 @@
 
     <script>
         // --- 1. DATA ---
-        // Updated defaults for "Intramural" sizing (5'9" 160lbs avg)
         const NEW_P = { 
             name:"Rookie", num:0, h:69, w:160, skin:"#8d5524", hair:"#111111", shoes:"#ffffff", 
             acc:{has:false, col:"#ffffff"},
@@ -240,7 +239,7 @@
             }
         };
 
-        let DB = JSON.parse(localStorage.getItem('bruzz_v5.3')) || {
+        let DB = JSON.parse(localStorage.getItem('bruzz_v5.4')) || {
             teams: [
                 {id:'t1', name:'The Bruzz', color:'#3b82f6', roster:[{...NEW_P, id:'p1', name:'Shane Mathis', h:62, w:140, stats:{...NEW_P.stats, speed:90, handle:85}}]},
                 {id:'t2', name:'Varsity Opps', color:'#ef4444', roster:[{...NEW_P, id:'p2', name:'Big Man', h:75, w:210, stats:{...NEW_P.stats, speed:50, str:80}}]}
@@ -250,7 +249,7 @@
         let app = { screen:'menu', activeT:null, activeP:null, gameOn:false };
         let engine = { scene:null, paused:false, rigs:[] };
 
-        const save = () => localStorage.setItem('bruzz_v5.3', JSON.stringify(DB));
+        const save = () => localStorage.setItem('bruzz_v5.4', JSON.stringify(DB));
         const nav = (s) => {
             document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
             document.getElementById('screen-'+s).classList.add('active');
@@ -307,7 +306,7 @@
             // Stats loop
             for(const [k,v] of Object.entries(p.stats)) {
                 if(document.getElementById('st-'+k)) {
-                    setVal('st-'+k, v); setVal('num-'+k, v); // Sync both
+                    setVal('st-'+k, v); setVal('num-'+k, v);
                 }
             }
         }
@@ -404,12 +403,7 @@
             engine.rigs = [];
             const spawn = (p, col, side) => {
                 const grp = new THREE.Group();
-                // Height: 75 inches (6'3) = 1.0 scale. 62 inches (5'2) = 0.82 scale.
-                const s = p.h / 75; 
-                grp.scale.set(s,s,s);
-                
-                // Weight Logic: 160lbs = 1.0 Width. 
-                // 140lbs = ~0.9 width. 250lbs = ~1.4 width.
+                const s = p.h/75; grp.scale.set(s,s,s);
                 const w = 1 + ((p.w - 160)/200); 
                 
                 const matJ = new THREE.MeshStandardMaterial({color:col});
