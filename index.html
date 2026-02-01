@@ -2,121 +2,122 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basketball Sim v15.0 (Spacing Engine)</title>
+    <title>Basketball Sim v16.0 (Physics & Anatomy)</title>
     <style>
-        :root { --blue: #2563eb; --red: #dc2626; --dark: #0f172a; --text: #f8fafc; }
-        body { margin: 0; background: #050505; color: var(--text); font-family: 'Segoe UI', monospace; overflow: hidden; user-select: none; }
+        :root { --blue: #2563eb; --red: #dc2626; --bg: #0f172a; --text: #f8fafc; }
+        body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', monospace; overflow: hidden; user-select: none; }
         
         /* UI LAYOUT */
         .screen { position: absolute; inset: 0; display: none; }
         .screen.active { display: block; }
 
-        /* HUD */
-        .tv-hud {
+        /* HUD & SCOREBOARD */
+        .tv-overlay {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: flex-end; font-weight: 900; 
+            display: flex; align-items: flex-end; 
             filter: drop-shadow(0 10px 20px rgba(0,0,0,0.8));
         }
-        .hud-bar { display: flex; background: #111; border: 2px solid #333; border-radius: 8px; overflow: hidden; }
-        .hud-team { width: 90px; padding: 15px; text-align: center; font-size: 20px; color: white; display: flex; align-items: center; justify-content: center; }
-        .hud-score { width: 70px; background: #fff; color: #000; font-size: 36px; display: flex; align-items: center; justify-content: center; font-family: monospace; }
-        .hud-clock { background: #222; color: #f00; width: 110px; font-size: 28px; display: flex; align-items: center; justify-content: center; font-family: monospace; border-left: 1px solid #444; }
+        .tv-bar { display: flex; background: #111; border: 2px solid #444; border-radius: 6px; overflow: hidden; }
+        .tv-team { width: 80px; padding: 12px; text-align: center; font-size: 20px; color: white; font-weight: 900; }
+        .tv-score { width: 60px; background: #eee; color: #111; font-size: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: monospace; }
+        .tv-clock { background: #222; color: #f00; width: 100px; font-size: 24px; display: flex; align-items: center; justify-content: center; font-family: monospace; border-left: 1px solid #444; }
 
-        /* MENUS */
+        /* SHOT METER */
+        .shot-meter {
+            position: absolute; width: 60px; height: 10px; background: #333; border: 1px solid white;
+            transform: translate(-50%, -50%); display: none; pointer-events: none; border-radius: 5px; overflow: hidden;
+        }
+        .shot-fill { height: 100%; width: 0%; background: linear-gradient(90deg, yellow, green, yellow); }
+        .shot-marker { position: absolute; top:0; left: 70%; width: 2px; height: 100%; background: white; }
+
+        /* MENU */
         #menu { background: #080808; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title { font-size: 80px; font-weight: 900; line-height: 0.9; text-align: center; margin-bottom: 40px; text-transform: uppercase; letter-spacing: -2px; }
+        .title { font-size: 70px; font-weight: 900; line-height: 0.9; text-align: center; margin-bottom: 30px; text-transform: uppercase; letter-spacing: -2px; }
         .btn { 
-            background: transparent; border: 1px solid #444; color: white; padding: 20px 60px; 
-            font-size: 16px; font-weight: 900; margin: 10px; cursor: pointer; width: 350px; 
+            background: rgba(255,255,255,0.05); border: 1px solid #444; color: white; padding: 18px 50px; 
+            font-size: 16px; font-weight: 800; margin: 8px; cursor: pointer; width: 300px; 
             text-transform: uppercase; letter-spacing: 2px; transition: 0.2s;
         }
-        .btn:hover { background: #fff; color: #000; transform: scale(1.05); }
-        .btn.primary { border-color: var(--blue); color: var(--blue); }
-        .btn.primary:hover { background: var(--blue); color: white; }
-
-        /* PAUSE MENU */
-        .pause-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .pause-overlay.active { display: flex; }
+        .btn:hover { background: #fff; color: #000; transform: scale(1.02); }
+        .btn.primary { border-color: var(--blue); background: rgba(37, 99, 235, 0.2); }
         
-        /* NOTIFICATIONS */
-        .notify { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; color: #fbbf24; text-shadow: 0 5px 20px black; pointer-events: none; opacity: 0; transition: opacity 0.2s; text-align: center; width: 100%; }
-        
-        .debug-overlay { position: absolute; top: 10px; right: 10px; font-size: 10px; color: #444; font-family: monospace; pointer-events: none; text-align: right; }
+        .controls-hint { position: absolute; top: 20px; right: 20px; text-align: right; font-size: 11px; color: #888; font-family: monospace; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.150.1/three.min.js"></script>
 </head>
 <body>
 
     <div id="menu" class="screen active">
-        <div class="title">Pro<br><span style="color:var(--blue)">Spacing</span> Engine</div>
-        <div style="color:#666; margin-bottom:40px; letter-spacing: 3px;">V15.0 AI OVERHAUL</div>
-        <button class="btn primary" onclick="initGame()">Start Match</button>
-        <button class="btn" onclick="alert('Roster Editor in DLC')">Rosters</button>
+        <div class="title">True<br><span style="color:var(--blue)">Physics</span> Hoops</div>
+        <div style="color:#666; margin-bottom:40px; font-size:12px; letter-spacing:2px;">NEWTONIAN ENGINE V16.0</div>
+        <button class="btn primary" onclick="initGame()">Enter Court</button>
+        <button class="btn" onclick="alert('Feature coming soon')">Settings</button>
     </div>
 
     <div id="game" class="screen">
-        <div class="tv-hud">
-            <div class="hud-bar">
-                <div class="hud-team" style="background:var(--blue)">HOME</div>
-                <div class="hud-score" id="sc-h">0</div>
-                <div class="hud-score" id="sc-a">0</div>
-                <div class="hud-team" style="background:var(--red)">AWAY</div>
-                <div class="hud-clock" id="clock">12:00</div>
+        <div class="tv-overlay">
+            <div class="tv-bar">
+                <div class="tv-team" style="background:var(--blue)">HOME</div>
+                <div class="tv-score" id="sc-h">0</div>
+                <div class="tv-score" id="sc-a">0</div>
+                <div class="tv-team" style="background:var(--red)">AWAY</div>
+                <div class="tv-clock" id="clock">10:00</div>
             </div>
         </div>
-        <div class="notify" id="notify">SWISH!</div>
-        <div class="debug-overlay">AI SPACING: 5-OUT<br>DEFENSE: MAN-TO-MAN</div>
+
+        <div class="controls-hint">
+            <b>ARROWS</b> Move<br><b>SHIFT</b> Sprint<br><b>SPACE (HOLD)</b> Shoot<br><b>X</b> Pass/Switch
+        </div>
+
+        <div id="shot-ui" class="shot-meter">
+            <div class="shot-fill" id="shot-bar"></div>
+            <div class="shot-marker"></div>
+        </div>
         
-        <div id="pause" class="pause-overlay">
-            <h1 style="font-size:60px; margin-bottom:40px;">PAUSED</h1>
-            <div style="display:flex; gap:40px; margin-bottom:40px;">
-                <div id="box-h" style="text-align:right"></div>
-                <div id="box-a" style="text-align:left"></div>
-            </div>
-            <button class="btn" onclick="togglePause()">RESUME</button>
-            <button class="btn" onclick="location.reload()">QUIT</button>
+        <div id="pause" style="position:absolute; inset:0; background:rgba(0,0,0,0.9); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
+            <h1 style="font-size:50px; margin-bottom:20px;">PAUSED</h1>
+            <button class="btn" onclick="togglePause()">Resume</button>
+            <button class="btn" onclick="location.reload()">Quit</button>
         </div>
     </div>
 
     <script>
-        // --- 1. SPACING ENGINE (The Fix for Clumping) ---
-        // Coordinates for the 5-Out Offense slots relative to the hoop
-        const SLOTS = [
-            { id: 0, name: 'TOP', x: 0, z: 30 },
-            { id: 1, name: 'WING_L', x: -22, z: 22 },
-            { id: 2, name: 'WING_R', x: 22, z: 22 },
-            { id: 3, name: 'CORNER_L', x: -24, z: 2 },
-            { id: 4, name: 'CORNER_R', x: 24, z: 2 }
-        ];
-
-        // --- 2. GAME STATE ---
-        const Game = {
-            active: false, paused: false, clock: 720,
-            possession: 'home', // 'home' or 'away'
-            state: 'play', // 'play', 'shot', 'reset'
-            scores: { home: 0, away: 0 },
-            teams: {
-                home: { id: 'home', color: 0x2563eb, roster: [] },
-                away: { id: 'away', color: 0xdc2626, roster: [] }
-            }
+        // --- 1. CONFIGURATION ---
+        const CFG = {
+            gravity: -0.025,
+            friction: 0.88,
+            accel: 0.04,
+            maxSpeed: 0.35,
+            sprintMod: 1.6,
+            dribbleForce: 0.4
         };
 
-        // --- 3. 3D SETUP ---
-        let scene, camera, renderer;
-        let actors = [], ball;
+        const Game = {
+            active: false, paused: false,
+            clock: 600,
+            possession: 'home',
+            scores: { home: 0, away: 0 },
+            actors: [],
+            ball: null
+        };
+
+        // --- 2. THREE.JS SETUP ---
+        let scene, camera, renderer, clock;
         const keys = {};
 
         function initGame() {
             document.getElementById('menu').classList.remove('active');
             document.getElementById('game').classList.add('active');
-            
+
             // Scene
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0x050505);
-            scene.fog = new THREE.Fog(0x050505, 40, 150);
-            
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a0a);
+            scene.fog = new THREE.Fog(0x0a0a0a, 40, 140);
+
+            // Camera (Broadcast Angle)
             camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 50, 85); camera.lookAt(0,0,0);
-            
+            camera.position.set(0, 50, 80); camera.lookAt(0,0,0);
+
+            // Renderer
             renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
@@ -124,283 +125,357 @@
 
             // Lights
             const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
-            const sun = new THREE.DirectionalLight(0xffffff, 1.2); 
-            sun.position.set(20, 80, 30); sun.castShadow = true;
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(20, 80, 40); sun.castShadow = true;
             sun.shadow.mapSize.set(2048,2048); scene.add(sun);
 
-            // Court
+            // Court (Reflective)
             const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048; const ctx=cvs.getContext('2d');
-            ctx.fillStyle='#e0b080'; ctx.fillRect(0,0,1024,2048); // Wood
+            ctx.fillStyle='#dcb388'; ctx.fillRect(0,0,1024,2048); // Wood
             ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380); ctx.fillRect(362,1668,300,380); // Paint
-            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948); // Border
-            ctx.beginPath(); ctx.moveTo(50,1024); ctx.lineTo(974,1024); ctx.stroke(); // Half
+            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948); // Lines
             ctx.beginPath(); ctx.arc(512,140,450,0,Math.PI); ctx.stroke(); // 3PT
             ctx.beginPath(); ctx.arc(512,1908,450,Math.PI,0); ctx.stroke();
-            
             const tex = new THREE.CanvasTexture(cvs); tex.anisotropy=16;
-            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.4}));
+            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.3}));
             court.rotation.x = -Math.PI/2; court.receiveShadow=true; scene.add(court);
 
             // Hoops
-            const makeHoop = (z) => {
-                const g = new THREE.Group();
-                const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,14), new THREE.MeshStandardMaterial({color:0x222})); p.position.y=7; g.add(p);
-                const b = new THREE.Mesh(new THREE.BoxGeometry(6,4,0.1), new THREE.MeshStandardMaterial({color:0xffffff})); b.position.set(0,13,1); g.add(b);
-                const r = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1), new THREE.MeshStandardMaterial({color:'orange'})); r.position.set(0,11,3); r.rotation.x=Math.PI/2; g.add(r);
-                g.position.z=z; if(z>0) g.rotation.y=Math.PI; scene.add(g);
-            }
-            makeHoop(-47); makeHoop(47);
+            const mkHoop=(z)=>{
+                const g=new THREE.Group();
+                const p=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,14), new THREE.MeshStandardMaterial({color:0x222})); p.position.y=7; g.add(p);
+                const b=new THREE.Mesh(new THREE.BoxGeometry(6,4,0.1), new THREE.MeshStandardMaterial({color:0xffffff})); b.position.set(0,13,1.5); g.add(b);
+                const r=new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,16), new THREE.MeshStandardMaterial({color:'orange'})); r.position.set(0,11,3); r.rotation.x=Math.PI/2; g.add(r);
+                g.position.z=z; if(z>0)g.rotation.y=Math.PI; scene.add(g);
+            };
+            mkHoop(-47); mkHoop(47);
 
-            // Spawn Players
-            actors = [];
-            spawnTeam(Game.teams.home, 1);
-            spawnTeam(Game.teams.away, -1);
+            // Ball Physics Object
+            const ballGeo = new THREE.SphereGeometry(0.65, 32, 32);
+            const ballMat = new THREE.MeshStandardMaterial({color:0xff6600, roughness:0.4});
+            Game.ball = {
+                mesh: new THREE.Mesh(ballGeo, ballMat),
+                pos: new THREE.Vector3(0,5,0),
+                vel: new THREE.Vector3(0,0,0),
+                owner: null, // If null, physics active. If set, attached to hand.
+                state: 'loose', // loose, dribble, shot
+                spin: new THREE.Vector3()
+            };
+            Game.ball.mesh.castShadow = true;
+            scene.add(Game.ball.mesh);
 
-            // Ball
-            ball = { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshStandardMaterial({color:'orange'})), pos: new THREE.Vector3(0,5,0), vel: new THREE.Vector3(), owner:null, state:'loose' };
-            scene.add(ball.mesh);
+            // Spawn Players (Biomechanical Rigs)
+            Game.actors = [];
+            spawnTeam('home', 0x2563eb, 1);
+            spawnTeam('away', 0xdc2626, -1);
 
-            // Assign Matchups & Give Ball
-            actors.forEach(a => {
-                if(a.team === 'home') {
-                    a.matchup = actors.find(b => b.team === 'away' && b.role === a.role);
-                    a.matchup.matchup = a;
-                }
-            });
-            ball.owner = actors[0]; ball.state='dribble';
+            // Give ball to P1 Home
+            const pg = Game.actors[0];
+            Game.ball.owner = pg;
+            Game.ball.state = 'dribble';
 
+            // Start Loop
             Game.active = true;
+            clock = new THREE.Clock();
             animate();
         }
 
-        // --- 4. PLAYER RIG GENERATOR (Humanoid) ---
-        function spawnTeam(team, dir) {
+        // --- 3. BIOMECHANICAL RIGGING ---
+        function spawnTeam(teamId, color, dir) {
             for(let i=0; i<5; i++) {
-                const g = new THREE.Group();
-                
+                // Root Group (Physics Pivot)
+                const root = new THREE.Group();
+                root.position.set((i-2)*6, 0, dir*20);
+                scene.add(root);
+
                 // Materials
-                const matJer = new THREE.MeshStandardMaterial({color:team.color});
                 const matSkin = new THREE.MeshStandardMaterial({color:0x8d5524});
-                
-                // --- Skeleton ---
-                const hip = new THREE.Group(); hip.position.y = 3; g.add(hip);
-                
-                // Torso
-                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.6), matJer);
-                torso.position.y = 1; hip.add(torso);
-                
+                const matJersey = new THREE.MeshStandardMaterial({color:color});
+
+                // --- Anatomy ---
+                // Hips (Center of mass)
+                const hips = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.8), matJersey);
+                hips.position.y = 3.2; root.add(hips);
+
+                // Torso (Child of Hips)
+                const spine = new THREE.Group(); spine.position.y = 0.25; hips.add(spine);
+                const chest = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.6, 0.7), matJersey);
+                chest.position.y = 0.8; spine.add(chest);
+
                 // Head
-                const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), matSkin);
-                head.position.y = 2.4; hip.add(head);
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.75), matSkin);
+                head.position.y = 1.8; spine.add(head);
+
+                // Limbs Helper
+                const mkLimb = (w, l, col) => {
+                    const g = new THREE.Group();
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(w, l, w), col);
+                    m.position.y = -l/2; g.add(m);
+                    return g;
+                };
+
+                // Legs (Jointed)
+                const thighL = mkLimb(0.45, 1.6, matJersey); thighL.position.set(-0.4, 0, 0); hips.add(thighL);
+                const shinL = mkLimb(0.35, 1.6, matSkin); shinL.position.y = -1.6; thighL.add(shinL); // Knee joint
+
+                const thighR = mkLimb(0.45, 1.6, matJersey); thighR.position.set(0.4, 0, 0); hips.add(thighR);
+                const shinR = mkLimb(0.35, 1.6, matSkin); shinR.position.y = -1.6; thighR.add(shinR);
 
                 // Arms
-                const mkLimb = (x, col) => {
-                    const l = new THREE.Group(); l.position.set(x, 1.8, 0);
-                    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), col); upper.position.y=-0.6;
-                    l.add(upper); return l;
-                }
-                const armL = mkLimb(-0.8, matSkin); hip.add(armL);
-                const armR = mkLimb(0.8, matSkin); hip.add(armR);
+                const armL = mkLimb(0.3, 1.4, matSkin); armL.position.set(-0.8, 1.4, 0); spine.add(armL); // Shoulder
+                const foreL = mkLimb(0.25, 1.4, matSkin); foreL.position.y = -1.4; armL.add(foreL); // Elbow
 
-                // Legs
-                const mkLeg = (x) => {
-                    const l = new THREE.Group(); l.position.set(x, 0, 0);
-                    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 0.4), matJer); thigh.position.y=-0.75;
-                    const shin = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.5, 0.35), matSkin); shin.position.y=-2.25;
-                    l.add(thigh, shin); return l;
-                }
-                const legL = mkLeg(-0.4); hip.add(legL);
-                const legR = mkLeg(0.4); hip.add(legR);
+                const armR = mkLimb(0.3, 1.4, matSkin); armR.position.set(0.8, 1.4, 0); spine.add(armR);
+                const foreR = mkLimb(0.25, 1.4, matSkin); foreR.position.y = -1.4; armR.add(foreR);
 
-                g.position.set(0, 0, dir*20); // Temp spawn
-                scene.add(g);
-
-                // Add to Logic list
-                team.roster.push({
-                    name: `Player ${i+1}`,
-                    pts: 0, ast: 0
-                });
-
-                actors.push({
-                    mesh: g, limbs: {hip, legL, legR, armL, armR},
-                    team: team.id, role: i, // 0=PG, 1=SG...
-                    matchup: null,
-                    user: (team.id==='home' && i===0)
+                // Actor Object
+                Game.actors.push({
+                    mesh: root,
+                    rig: { hips, thighL, shinL, thighR, shinR, armL, foreL, armR, foreR, spine },
+                    vel: new THREE.Vector3(),
+                    team: teamId,
+                    role: i,
+                    user: (teamId==='home' && i===0),
+                    state: 'idle',
+                    shotPower: 0,
+                    isShooting: false
                 });
             }
         }
 
-        // --- 5. AI & PHYSICS LOOP ---
+        // --- 4. PHYSICS & ANIMATION ENGINE ---
         function animate() {
             if(!Game.active) return;
             requestAnimationFrame(animate);
             if(Game.paused) return;
 
-            // 1. UPDATE PLAYERS
-            actors.forEach(a => {
-                let move = new THREE.Vector3();
-                const hoopZ = a.team==='home' ? -43 : 43; // Attacking Hoop
-                const defZ = a.team==='home' ? 43 : -43;  // Defending Hoop
+            const dt = 1; // Fixed step for simplicity logic
 
-                // --- OFFENSE AI ---
-                if(Game.possession === a.team) {
-                    if(ball.owner === a) {
-                        // BALL HANDLER
-                        if(a.user) {
-                            if(keys['ArrowUp']) move.z-=1; if(keys['ArrowDown']) move.z+=1;
-                            if(keys['ArrowLeft']) move.x-=1; if(keys['ArrowRight']) move.x+=1;
-                            if(move.lengthSq()>0) move.normalize().multiplyScalar(0.2);
-                        } else {
-                            // CPU Handler: Attack rim slowly
-                            const dx = 0 - a.mesh.position.x;
-                            const dz = hoopZ - a.mesh.position.z;
-                            if(Math.abs(dz) > 5) move.set(dx,0,dz).normalize().multiplyScalar(0.15);
-                        }
-                    } else {
-                        // OFF BALL (5-OUT SPACING)
-                        // Map role to slot.
-                        // Home attacks neg Z. Away attacks pos Z.
-                        const slot = SLOTS[a.role]; 
-                        const tz = a.team==='home' ? (hoopZ + slot.z) : (hoopZ - slot.z);
-                        const tx = slot.x;
-                        
-                        // Move to slot
-                        const dx = tx - a.mesh.position.x;
-                        const dz = tz - a.mesh.position.z;
-                        if(Math.sqrt(dx*dx+dz*dz) > 1.0) {
-                            move.set(dx, 0, dz).normalize().multiplyScalar(0.18);
-                        }
-                    }
-                } 
-                // --- DEFENSE AI ---
-                else {
-                    if(a.matchup) {
-                        // Stay between man and hoop (Sag logic)
-                        const manPos = a.matchup.mesh.position;
-                        const goalPos = new THREE.Vector3(0,0,defZ);
-                        // Lerp 30% from Man to Hoop
-                        const guardSpot = new THREE.Vector3().lerpVectors(manPos, goalPos, 0.3);
-                        
-                        const dx = guardSpot.x - a.mesh.position.x;
-                        const dz = guardSpot.z - a.mesh.position.z;
-                        if(Math.sqrt(dx*dx+dz*dz) > 0.5) {
-                            move.set(dx,0,dz).normalize().multiplyScalar(0.17);
-                        }
+            // A. PLAYER UPDATE
+            Game.actors.forEach(a => {
+                // 1. Movement Physics
+                const acc = new THREE.Vector3();
+                
+                if(a.user) {
+                    // Camera relative controls
+                    if(keys['ArrowUp']) acc.z -= CFG.accel;
+                    if(keys['ArrowDown']) acc.z += CFG.accel;
+                    if(keys['ArrowLeft']) acc.x -= CFG.accel;
+                    if(keys['ArrowRight']) acc.x += CFG.accel;
+                    if(keys['Shift']) acc.multiplyScalar(CFG.sprintMod);
+                } else {
+                    // Simple AI: Stay between ball and hoop or 5-out spacing
+                    // (Simplified for v16 focus on physics)
+                    if(Game.ball.owner && Game.ball.owner.team !== a.team) {
+                        // Defense
+                        const hoopZ = a.team==='home' ? -41 : 41;
+                        const target = new THREE.Vector3(Game.ball.mesh.position.x*0.5, 0, (Game.ball.mesh.position.z+hoopZ)*0.5);
+                        acc.subVectors(target, a.mesh.position).normalize().multiplyScalar(CFG.accel*0.8);
                     }
                 }
 
-                // COLLISION
-                actors.forEach(b => {
-                    if(a!==b && a.mesh.position.distanceTo(b.mesh.position) < 1.5) {
-                        const push = a.mesh.position.clone().sub(b.mesh.position).normalize().multiplyScalar(0.05);
-                        move.add(push);
-                    }
-                });
+                // Apply Physics
+                a.vel.add(acc);
+                a.vel.multiplyScalar(CFG.friction); // Friction
+                a.mesh.position.add(a.vel);
 
-                // APPLY & ANIMATE
-                a.mesh.position.add(move);
-                if(move.lengthSq() > 0.001) {
-                    a.mesh.lookAt(a.mesh.position.clone().add(move));
-                    // Run Cycle
-                    const t = Date.now()*0.015;
-                    a.limbs.legL.rotation.x = Math.sin(t);
-                    a.limbs.legR.rotation.x = -Math.sin(t);
-                    a.limbs.armL.rotation.x = -Math.sin(t);
-                    a.limbs.armR.rotation.x = Math.sin(t);
+                // Face Direction
+                if(a.vel.lengthSq() > 0.001) {
+                    const angle = Math.atan2(a.vel.x, a.vel.z);
+                    a.mesh.rotation.y = angle;
+                }
+
+                // 2. Procedural Animation (Biomechanics)
+                const speed = a.vel.length();
+                const runCycle = Date.now() * 0.015;
+                
+                // Hip Bob (Physics based bounce)
+                a.rig.hips.position.y = 3.2 + Math.sin(runCycle*2) * (speed*2);
+                
+                // Leg Swing (Inverse Kinematics approximation)
+                const stride = speed * 15; // Stride length based on speed
+                a.rig.thighL.rotation.x = Math.sin(runCycle) * stride;
+                a.rig.shinL.rotation.x = Math.abs(Math.sin(runCycle + 1)) * stride; // Knees bend back only
+                
+                a.rig.thighR.rotation.x = Math.sin(runCycle + Math.PI) * stride;
+                a.rig.shinR.rotation.x = Math.abs(Math.sin(runCycle + Math.PI + 1)) * stride;
+
+                // Spine Tilt (Lean into run)
+                a.rig.hips.rotation.x = speed * 2; 
+
+                // Shooting Stance Override
+                if(a.isShooting) {
+                    a.rig.armR.rotation.x = -2.5; // Arms up
+                    a.rig.armL.rotation.x = -2.5;
+                    a.rig.foreR.rotation.x = -0.5;
+                    a.rig.foreL.rotation.x = -0.5;
                 } else {
-                    // Idle
-                    a.limbs.legL.rotation.x = 0; a.limbs.legR.rotation.x = 0;
+                    // Arm Swing
+                    a.rig.armL.rotation.x = -a.rig.thighL.rotation.x * 0.8;
+                    a.rig.armR.rotation.x = -a.rig.thighR.rotation.x * 0.8;
                 }
             });
 
-            // 2. BALL PHYSICS
-            if(ball.owner) {
-                const p = ball.owner.mesh.position;
-                ball.mesh.position.set(p.x + Math.sin(Date.now()*0.01)*1.5, 4 + Math.abs(Math.sin(Date.now()*0.015)*2), p.z + 1.5);
-            } else {
-                ball.mesh.position.add(ball.vel);
-                ball.vel.y -= 0.02; // Grav
-                
-                // Floor
-                if(ball.mesh.position.y < 0.6) {
-                    ball.mesh.position.y = 0.6; ball.vel.y *= -0.6;
-                }
+            // B. BALL PHYSICS
+            updateBallPhysics();
 
-                // Bounds
-                if(Math.abs(ball.mesh.position.z) > 48 || Math.abs(ball.mesh.position.x) > 26) {
-                    notify("OUT OF BOUNDS");
-                    resetPlay(Game.possession==='home'?'away':'home');
-                }
-
-                // Scoring
-                const hoopZ = Game.possession==='home' ? -41 : 41; // Target
-                // Check dist to hoop center
-                if(Math.abs(ball.mesh.position.z - hoopZ) < 2 && Math.abs(ball.mesh.position.x) < 2 && ball.mesh.position.y > 9 && ball.vel.y < 0) {
-                    score(Game.possession);
-                }
-            }
-
-            // Camera
-            const focus = ball.owner ? ball.owner.mesh.position : ball.mesh.position;
-            camera.position.x += (40 + focus.x*0.1 - camera.position.x)*0.05;
-            camera.position.z += (focus.z*0.5 - camera.position.z)*0.05;
-            camera.lookAt(focus.x, 0, focus.z);
+            // C. CAMERA
+            const target = Game.ball.owner ? Game.ball.owner.mesh.position : Game.ball.mesh.position;
+            camera.position.x += (30 + target.x*0.1 - camera.position.x) * 0.05;
+            camera.position.z += (target.z*0.5 - camera.position.z) * 0.05;
+            camera.lookAt(target.x, 0, target.z);
 
             renderer.render(scene, camera);
         }
 
-        // --- 6. LOGIC HELPERS ---
-        function score(team) {
-            Game.scores[team] += 2;
-            document.getElementById('sc-h').innerText = Game.scores.home;
-            document.getElementById('sc-a').innerText = Game.scores.away;
-            notify("BUCKET!");
-            resetPlay(team==='home'?'away':'home');
+        function updateBallPhysics() {
+            const b = Game.ball;
+            const bMesh = b.mesh;
+
+            if(b.owner) {
+                // DRIBBLE STATE
+                // Procedural dribble animation
+                const p = b.owner.mesh.position;
+                const time = Date.now() * 0.008;
+                const dribbleHeight = Math.abs(Math.sin(time)) * 3; // 0 to 3 units high
+                
+                // Hand follows ball roughly
+                // b.owner.rig.armR.rotation.x = ... (Add IK later)
+
+                b.pos.set(
+                    p.x + Math.sin(time)*0.5 + (b.owner.vel.x*5), 
+                    dribbleHeight + 0.65, 
+                    p.z + Math.cos(time)*0.5 + (b.owner.vel.z*5) + 1.5
+                );
+                bMesh.position.copy(b.pos);
+                
+                // Shooting Logic
+                if(b.owner.user && keys['Space']) {
+                    b.owner.isShooting = true;
+                    b.owner.shotPower += 0.02;
+                    // Update Meter
+                    const meter = document.getElementById('shot-ui');
+                    meter.style.display = 'block';
+                    const screenPos = p.clone().project(camera);
+                    meter.style.left = (screenPos.x * .5 + .5) * window.innerWidth + 'px';
+                    meter.style.top = (-(screenPos.y * .5) + .5) * window.innerHeight - 50 + 'px';
+                    document.getElementById('shot-bar').style.width = Math.min(100, b.owner.shotPower*100) + '%';
+                } else if (b.owner.isShooting) {
+                    // Release
+                    shootBall(b.owner);
+                }
+
+            } else {
+                // FREE PHYSICS STATE
+                b.vel.y += CFG.gravity; // Apply Gravity
+                b.pos.add(b.vel);
+                
+                // Floor Collision
+                if(b.pos.y < 0.65) {
+                    b.pos.y = 0.65;
+                    b.vel.y *= -0.75; // Bounciness
+                    b.vel.x *= 0.98; // Friction
+                    b.vel.z *= 0.98;
+                }
+
+                // Rim/Backboard Collision (Simple Box Check)
+                // Hoop is at Z = +/- 47, Y = 10
+                const hoopZ = b.vel.z > 0 ? 47 : -47;
+                if(Math.abs(b.pos.z - hoopZ) < 1.5 && Math.abs(b.pos.x) < 1.5 && Math.abs(b.pos.y - 10) < 1) {
+                    // In the cylinder?
+                    if(b.vel.y < 0) {
+                        Game.scores[b.vel.z > 0 ? 'away':'home'] += 2; // Score
+                        document.getElementById('sc-h').innerText = Game.scores.home;
+                        document.getElementById('sc-a').innerText = Game.scores.away;
+                        resetPlay(b.vel.z > 0 ? 'home':'away');
+                    }
+                }
+
+                bMesh.position.copy(b.pos);
+                bMesh.rotation.x += b.vel.z;
+                bMesh.rotation.z -= b.vel.x;
+            }
         }
 
-        function resetPlay(nextPoss) {
-            Game.possession = nextPoss;
-            ball.owner = null; ball.vel.set(0,0,0);
+        function shootBall(player) {
+            Game.ball.owner = null;
+            player.isShooting = false;
+            document.getElementById('shot-ui').style.display='none';
+
+            // Projectile Physics Calculation
+            // Target Hoop
+            const hoopZ = player.team==='home' ? -47 : 47;
+            const dist = Math.sqrt(Math.pow(0 - player.mesh.position.x, 2) + Math.pow(hoopZ - player.mesh.position.z, 2));
             
-            // Teleport ball to PG of next team
-            const pg = actors.find(a => a.team === nextPoss && a.role === 0);
-            ball.owner = pg;
+            // Calculate Velocity needed to reach distance
+            // v = sqrt( (g * x^2) / (2 * cos^2(theta) * (x * tan(theta) + y)) )
+            // Simplified approximation for game feel:
+            const power = player.shotPower; // 0 to 1
+            player.shotPower = 0;
+
+            // Accuracy based on timing (0.7 is sweet spot)
+            const accuracy = 1 - Math.abs(power - 0.7); 
+            const errorX = (Math.random()-0.5) * (1-accuracy) * 0.5;
+
+            const timeToHoop = dist / 25; 
             
-            // Reset players to backcourt
-            actors.forEach(a => {
-                const zBase = a.team==='home' ? 20 : -20;
-                a.mesh.position.set((a.role-2)*5, 0, zBase);
+            Game.ball.vel.x = (0 - player.mesh.position.x) / 35 + errorX;
+            Game.ball.vel.z = (hoopZ - player.mesh.position.z) / 35;
+            Game.ball.vel.y = 0.8 + (dist*0.01); // Arc based on distance
+            
+            Game.ball.state = 'shot';
+        }
+
+        function resetPlay(possession) {
+            Game.possession = possession;
+            Game.ball.vel.set(0,0,0);
+            Game.ball.owner = null;
+            
+            // Teleport
+            const pg = Game.actors.find(a => a.team === possession && a.role === 0);
+            Game.ball.owner = pg;
+            Game.ball.state = 'dribble';
+            
+            Game.actors.forEach(a => {
+                a.mesh.position.set((a.role-2)*6, 0, a.team==='home'?15:-15);
+                a.vel.set(0,0,0);
             });
         }
 
-        function notify(msg) {
-            const el = document.getElementById('notify');
-            el.innerText = msg; el.style.opacity = 1;
-            setTimeout(()=>el.style.opacity=0, 1500);
-        }
-
-        // Input
-        window.onkeydown = e => { 
-            if(e.key==='Escape') togglePause();
-            if(e.key===' ') shoot();
-            if(e.key.startsWith('Arrow')) keys[e.key]=true; 
+        // --- 5. INPUT ---
+        window.onkeydown = e => {
+            if(e.key === 'Escape') togglePause();
+            if(e.code === 'Space') keys['Space'] = true;
+            if(e.key === 'Shift') keys['Shift'] = true;
+            if(e.key.startsWith('Arrow')) keys[e.key] = true;
+            if(e.key === 'x') pass();
         };
-        window.onkeyup = e => { if(e.key.startsWith('Arrow')) keys[e.key]=false; };
+        window.onkeyup = e => {
+            if(e.code === 'Space') keys['Space'] = false;
+            if(e.key === 'Shift') keys['Shift'] = false;
+            if(e.key.startsWith('Arrow')) keys[e.key] = false;
+        };
 
-        function shoot() {
-            const u = actors.find(a=>a.user);
-            if(ball.owner === u) {
-                ball.owner = null;
-                const hoopZ = u.team==='home' ? -43 : 43;
-                const dx = 0 - u.mesh.position.x;
-                const dz = hoopZ - u.mesh.position.z;
-                ball.vel.set(dx*0.04, 0.9, dz*0.04);
-            }
+        function pass() {
+            if(!Game.ball.owner || !Game.ball.owner.user) return;
+            const u = Game.ball.owner;
+            // Find nearest teammate in front
+            // Simplified: Cycle to next role
+            const mate = Game.actors.find(a => a.team === u.team && a.role === (u.role+1)%5);
+            
+            Game.ball.owner = null;
+            const dx = mate.mesh.position.x - u.mesh.position.x;
+            const dz = mate.mesh.position.z - u.mesh.position.z;
+            Game.ball.vel.set(dx*0.05, 0.4, dz*0.05); // Pass speed
+            
+            // Switch user control immediately? No, wait for catch.
+            // For now, auto switch user for gameplay flow
+            u.user = false; mate.user = true;
         }
 
         function togglePause() {
             Game.paused = !Game.paused;
-            document.getElementById('pause').classList.toggle('active');
+            document.getElementById('pause').style.display = Game.paused ? 'flex' : 'none';
         }
 
     </script>
