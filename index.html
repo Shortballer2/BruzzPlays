@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basketball Sim v16.0 (Physics & Anatomy)</title>
+    <title>Basketball Sim v18.0 (Fouls & Free Throws)</title>
     <style>
         :root { --blue: #2563eb; --red: #dc2626; --bg: #0f172a; --text: #f8fafc; }
         body { margin: 0; background: #000; color: var(--text); font-family: 'Segoe UI', monospace; overflow: hidden; user-select: none; }
@@ -11,7 +11,7 @@
         .screen { position: absolute; inset: 0; display: none; }
         .screen.active { display: block; }
 
-        /* HUD & SCOREBOARD */
+        /* HUD */
         .tv-overlay {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             display: flex; align-items: flex-end; 
@@ -20,15 +20,29 @@
         .tv-bar { display: flex; background: #111; border: 2px solid #444; border-radius: 6px; overflow: hidden; }
         .tv-team { width: 80px; padding: 12px; text-align: center; font-size: 20px; color: white; font-weight: 900; }
         .tv-score { width: 60px; background: #eee; color: #111; font-size: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-family: monospace; }
+        .tv-foul { font-size: 10px; color: #facc15; margin-top: 4px; display: block; }
         .tv-clock { background: #222; color: #f00; width: 100px; font-size: 24px; display: flex; align-items: center; justify-content: center; font-family: monospace; border-left: 1px solid #444; }
 
-        /* SHOT METER */
-        .shot-meter {
-            position: absolute; width: 60px; height: 10px; background: #333; border: 1px solid white;
-            transform: translate(-50%, -50%); display: none; pointer-events: none; border-radius: 5px; overflow: hidden;
+        /* NOTIFICATIONS & WHISTLE */
+        .notify {
+            position: absolute; top: 150px; left: 50%; transform: translateX(-50%); 
+            font-size: 50px; font-weight: 900; font-style: italic;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+            opacity: 0; pointer-events: none; transition: transform 0.2s, opacity 0.2s;
+            text-align: center; width: 100%;
         }
-        .shot-fill { height: 100%; width: 0%; background: linear-gradient(90deg, yellow, green, yellow); }
-        .shot-marker { position: absolute; top:0; left: 70%; width: 2px; height: 100%; background: white; }
+        .notify.whistle { color: #fbbf24; text-transform: uppercase; letter-spacing: 5px; }
+        .notify.active { opacity: 1; transform: translateX(-50%) scale(1.1); }
+
+        /* FREE THROW METER */
+        .ft-meter-container {
+            position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+            width: 300px; height: 30px; background: #222; border: 2px solid white; border-radius: 15px;
+            display: none; overflow: hidden;
+        }
+        .ft-meter-bar { width: 100%; height: 100%; position: relative; }
+        .ft-zone { position: absolute; left: 45%; width: 10%; height: 100%; background: #22c55e; }
+        .ft-cursor { position: absolute; left: 0%; width: 4px; height: 100%; background: white; transition: none; }
 
         /* MENU */
         #menu { background: #080808; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -40,56 +54,58 @@
         }
         .btn:hover { background: #fff; color: #000; transform: scale(1.02); }
         .btn.primary { border-color: var(--blue); background: rgba(37, 99, 235, 0.2); }
-        
-        .controls-hint { position: absolute; top: 20px; right: 20px; text-align: right; font-size: 11px; color: #888; font-family: monospace; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.150.1/three.min.js"></script>
 </head>
 <body>
 
     <div id="menu" class="screen active">
-        <div class="title">True<br><span style="color:var(--blue)">Physics</span> Hoops</div>
-        <div style="color:#666; margin-bottom:40px; font-size:12px; letter-spacing:2px;">NEWTONIAN ENGINE V16.0</div>
-        <button class="btn primary" onclick="initGame()">Enter Court</button>
-        <button class="btn" onclick="alert('Feature coming soon')">Settings</button>
+        <div class="title">Official<br><span style="color:var(--blue)">Rules</span> Update</div>
+        <div style="color:#666; margin-bottom:40px; font-size:12px; letter-spacing:2px;">FOULS • FREE THROWS • THE BONUS</div>
+        <button class="btn primary" onclick="initGame()">Tip Off</button>
     </div>
 
     <div id="game" class="screen">
         <div class="tv-overlay">
             <div class="tv-bar">
-                <div class="tv-team" style="background:var(--blue)">HOME</div>
+                <div class="tv-team" style="background:var(--blue)">
+                    HM<span class="tv-foul" id="foul-h">FLS: 0</span>
+                </div>
                 <div class="tv-score" id="sc-h">0</div>
                 <div class="tv-score" id="sc-a">0</div>
-                <div class="tv-team" style="background:var(--red)">AWAY</div>
+                <div class="tv-team" style="background:var(--red)">
+                    AW<span class="tv-foul" id="foul-a">FLS: 0</span>
+                </div>
                 <div class="tv-clock" id="clock">10:00</div>
             </div>
         </div>
 
-        <div class="controls-hint">
-            <b>ARROWS</b> Move<br><b>SHIFT</b> Sprint<br><b>SPACE (HOLD)</b> Shoot<br><b>X</b> Pass/Switch
-        </div>
+        <div id="feedback" class="notify whistle">WHISTLE!</div>
 
-        <div id="shot-ui" class="shot-meter">
-            <div class="shot-fill" id="shot-bar"></div>
-            <div class="shot-marker"></div>
+        <div id="ft-ui" class="ft-meter-container">
+            <div class="ft-meter-bar">
+                <div class="ft-zone"></div>
+                <div class="ft-cursor" id="ft-cursor"></div>
+            </div>
+            <div style="position:absolute; top:-25px; width:100%; text-align:center; font-size:12px; font-weight:bold;">PRESS SPACE IN GREEN</div>
         </div>
         
-        <div id="pause" style="position:absolute; inset:0; background:rgba(0,0,0,0.9); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:100;">
-            <h1 style="font-size:50px; margin-bottom:20px;">PAUSED</h1>
-            <button class="btn" onclick="togglePause()">Resume</button>
-            <button class="btn" onclick="location.reload()">Quit</button>
+        <div id="controls" style="position:absolute; top:20px; right:20px; text-align:right; font-size:11px; color:#888;">
+            <b>ARROWS</b> Move<br><b>SPACE</b> Shoot / Jump<br><b>X</b> Pass / Steal
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
+        // --- 1. CONFIG ---
         const CFG = {
             gravity: -0.025,
             friction: 0.88,
             accel: 0.04,
             maxSpeed: 0.35,
-            sprintMod: 1.6,
-            dribbleForce: 0.4
+            stealRange: 2.2,
+            foulChanceReach: 0.4, // 40% chance of foul on bad reach
+            foulChanceBlock: 0.3, // Collision foul chance
+            bonusLimit: 5
         };
 
         const Game = {
@@ -97,8 +113,11 @@
             clock: 600,
             possession: 'home',
             scores: { home: 0, away: 0 },
+            fouls: { home: 0, away: 0 },
             actors: [],
-            ball: null
+            ball: null,
+            mode: 'play', // play, dead, freethrow
+            ftState: { shooter: null, shots: 0, taken: 0, active: false, speed: 2, val: 0, dir: 1 }
         };
 
         // --- 2. THREE.JS SETUP ---
@@ -109,33 +128,25 @@
             document.getElementById('menu').classList.remove('active');
             document.getElementById('game').classList.add('active');
 
-            // Scene
             scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a0a);
-            scene.fog = new THREE.Fog(0x0a0a0a, 40, 140);
-
-            // Camera (Broadcast Angle)
             camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 50, 80); camera.lookAt(0,0,0);
+            camera.position.set(0, 55, 85); camera.lookAt(0,0,5);
 
-            // Renderer
             renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.getElementById('game').appendChild(renderer.domElement);
 
-            // Lights
+            // Lights & Court
             const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
             const sun = new THREE.DirectionalLight(0xffffff, 1.2);
             sun.position.set(20, 80, 40); sun.castShadow = true;
             sun.shadow.mapSize.set(2048,2048); scene.add(sun);
 
-            // Court (Reflective)
             const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048; const ctx=cvs.getContext('2d');
-            ctx.fillStyle='#dcb388'; ctx.fillRect(0,0,1024,2048); // Wood
-            ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380); ctx.fillRect(362,1668,300,380); // Paint
-            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948); // Lines
-            ctx.beginPath(); ctx.arc(512,140,450,0,Math.PI); ctx.stroke(); // 3PT
-            ctx.beginPath(); ctx.arc(512,1908,450,Math.PI,0); ctx.stroke();
+            ctx.fillStyle='#dcb388'; ctx.fillRect(0,0,1024,2048);
+            ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380); ctx.fillRect(362,1668,300,380);
+            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948);
             const tex = new THREE.CanvasTexture(cvs); tex.anisotropy=16;
             const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.3}));
             court.rotation.x = -Math.PI/2; court.receiveShadow=true; scene.add(court);
@@ -150,332 +161,284 @@
             };
             mkHoop(-47); mkHoop(47);
 
-            // Ball Physics Object
-            const ballGeo = new THREE.SphereGeometry(0.65, 32, 32);
-            const ballMat = new THREE.MeshStandardMaterial({color:0xff6600, roughness:0.4});
+            // Ball
             Game.ball = {
-                mesh: new THREE.Mesh(ballGeo, ballMat),
-                pos: new THREE.Vector3(0,5,0),
-                vel: new THREE.Vector3(0,0,0),
-                owner: null, // If null, physics active. If set, attached to hand.
-                state: 'loose', // loose, dribble, shot
-                spin: new THREE.Vector3()
+                mesh: new THREE.Mesh(new THREE.SphereGeometry(0.65), new THREE.MeshStandardMaterial({color:0xff6600})),
+                pos: new THREE.Vector3(0,5,0), vel: new THREE.Vector3(), owner: null, state: 'loose'
             };
-            Game.ball.mesh.castShadow = true;
-            scene.add(Game.ball.mesh);
+            Game.ball.mesh.castShadow = true; scene.add(Game.ball.mesh);
 
-            // Spawn Players (Biomechanical Rigs)
+            // Players
             Game.actors = [];
             spawnTeam('home', 0x2563eb, 1);
             spawnTeam('away', 0xdc2626, -1);
 
-            // Give ball to P1 Home
-            const pg = Game.actors[0];
-            Game.ball.owner = pg;
-            Game.ball.state = 'dribble';
-
-            // Start Loop
+            // Start
+            Game.ball.owner = Game.actors[0]; Game.ball.state = 'dribble';
             Game.active = true;
             clock = new THREE.Clock();
             animate();
         }
 
-        // --- 3. BIOMECHANICAL RIGGING ---
-        function spawnTeam(teamId, color, dir) {
+        function spawnTeam(id, col, dir) {
             for(let i=0; i<5; i++) {
-                // Root Group (Physics Pivot)
-                const root = new THREE.Group();
-                root.position.set((i-2)*6, 0, dir*20);
-                scene.add(root);
+                const g = new THREE.Group(); g.position.set((i-2)*6, 0, dir*20); scene.add(g);
+                const mat = new THREE.MeshStandardMaterial({color:col});
+                const skin = new THREE.MeshStandardMaterial({color:0x8d5524});
+                
+                // Simple Rig
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.4,1.5), mat); body.position.y=2.5; g.add(body);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.4), skin); head.position.y=3.5; g.add(head);
+                const ind = new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,4), new THREE.MeshBasicMaterial({color:0xffff00})); 
+                ind.position.y=4.5; ind.rotation.x=Math.PI; if(id==='home'&&i===0) g.add(ind);
 
-                // Materials
-                const matSkin = new THREE.MeshStandardMaterial({color:0x8d5524});
-                const matJersey = new THREE.MeshStandardMaterial({color:color});
-
-                // --- Anatomy ---
-                // Hips (Center of mass)
-                const hips = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.8), matJersey);
-                hips.position.y = 3.2; root.add(hips);
-
-                // Torso (Child of Hips)
-                const spine = new THREE.Group(); spine.position.y = 0.25; hips.add(spine);
-                const chest = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.6, 0.7), matJersey);
-                chest.position.y = 0.8; spine.add(chest);
-
-                // Head
-                const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.75), matSkin);
-                head.position.y = 1.8; spine.add(head);
-
-                // Limbs Helper
-                const mkLimb = (w, l, col) => {
-                    const g = new THREE.Group();
-                    const m = new THREE.Mesh(new THREE.BoxGeometry(w, l, w), col);
-                    m.position.y = -l/2; g.add(m);
-                    return g;
-                };
-
-                // Legs (Jointed)
-                const thighL = mkLimb(0.45, 1.6, matJersey); thighL.position.set(-0.4, 0, 0); hips.add(thighL);
-                const shinL = mkLimb(0.35, 1.6, matSkin); shinL.position.y = -1.6; thighL.add(shinL); // Knee joint
-
-                const thighR = mkLimb(0.45, 1.6, matJersey); thighR.position.set(0.4, 0, 0); hips.add(thighR);
-                const shinR = mkLimb(0.35, 1.6, matSkin); shinR.position.y = -1.6; thighR.add(shinR);
-
-                // Arms
-                const armL = mkLimb(0.3, 1.4, matSkin); armL.position.set(-0.8, 1.4, 0); spine.add(armL); // Shoulder
-                const foreL = mkLimb(0.25, 1.4, matSkin); foreL.position.y = -1.4; armL.add(foreL); // Elbow
-
-                const armR = mkLimb(0.3, 1.4, matSkin); armR.position.set(0.8, 1.4, 0); spine.add(armR);
-                const foreR = mkLimb(0.25, 1.4, matSkin); foreR.position.y = -1.4; armR.add(foreR);
-
-                // Actor Object
                 Game.actors.push({
-                    mesh: root,
-                    rig: { hips, thighL, shinL, thighR, shinR, armL, foreL, armR, foreR, spine },
-                    vel: new THREE.Vector3(),
-                    team: teamId,
-                    role: i,
-                    user: (teamId==='home' && i===0),
-                    state: 'idle',
-                    shotPower: 0,
-                    isShooting: false
+                    mesh: g, team: id, user: (id==='home'&&i===0), role: i,
+                    vel: new THREE.Vector3(), cooldown: 0, isShooting: false
                 });
             }
         }
 
-        // --- 4. PHYSICS & ANIMATION ENGINE ---
+        // --- 3. GAMEPLAY & FOUL LOGIC ---
         function animate() {
             if(!Game.active) return;
             requestAnimationFrame(animate);
-            if(Game.paused) return;
+            if(Game.mode === 'freethrow') { updateFreeThrow(); renderer.render(scene, camera); return; }
+            if(Game.mode === 'dead') { renderer.render(scene, camera); return; }
 
-            const dt = 1; // Fixed step for simplicity logic
+            const dt = 1;
 
-            // A. PLAYER UPDATE
             Game.actors.forEach(a => {
-                // 1. Movement Physics
+                // Physics & AI (Simplified from v16 for clarity on Foul Logic)
                 const acc = new THREE.Vector3();
-                
                 if(a.user) {
-                    // Camera relative controls
-                    if(keys['ArrowUp']) acc.z -= CFG.accel;
-                    if(keys['ArrowDown']) acc.z += CFG.accel;
-                    if(keys['ArrowLeft']) acc.x -= CFG.accel;
-                    if(keys['ArrowRight']) acc.x += CFG.accel;
-                    if(keys['Shift']) acc.multiplyScalar(CFG.sprintMod);
+                    if(keys['ArrowUp']) acc.z-=CFG.accel; if(keys['ArrowDown']) acc.z+=CFG.accel;
+                    if(keys['ArrowLeft']) acc.x-=CFG.accel; if(keys['ArrowRight']) acc.x+=CFG.accel;
                 } else {
-                    // Simple AI: Stay between ball and hoop or 5-out spacing
-                    // (Simplified for v16 focus on physics)
+                    // AI Defense
                     if(Game.ball.owner && Game.ball.owner.team !== a.team) {
-                        // Defense
-                        const hoopZ = a.team==='home' ? -41 : 41;
+                        const hoopZ = a.team==='home'?-41:41;
                         const target = new THREE.Vector3(Game.ball.mesh.position.x*0.5, 0, (Game.ball.mesh.position.z+hoopZ)*0.5);
                         acc.subVectors(target, a.mesh.position).normalize().multiplyScalar(CFG.accel*0.8);
+                        
+                        // AI Reach Foul Chance
+                        if(Game.ball.owner.user && a.mesh.position.distanceTo(Game.ball.mesh.position) < 1.5 && Math.random() < 0.002) {
+                            callFoul(a, Game.ball.owner, "REACH-IN");
+                        }
                     }
                 }
-
-                // Apply Physics
-                a.vel.add(acc);
-                a.vel.multiplyScalar(CFG.friction); // Friction
-                a.mesh.position.add(a.vel);
-
-                // Face Direction
-                if(a.vel.lengthSq() > 0.001) {
-                    const angle = Math.atan2(a.vel.x, a.vel.z);
-                    a.mesh.rotation.y = angle;
-                }
-
-                // 2. Procedural Animation (Biomechanics)
-                const speed = a.vel.length();
-                const runCycle = Date.now() * 0.015;
                 
-                // Hip Bob (Physics based bounce)
-                a.rig.hips.position.y = 3.2 + Math.sin(runCycle*2) * (speed*2);
-                
-                // Leg Swing (Inverse Kinematics approximation)
-                const stride = speed * 15; // Stride length based on speed
-                a.rig.thighL.rotation.x = Math.sin(runCycle) * stride;
-                a.rig.shinL.rotation.x = Math.abs(Math.sin(runCycle + 1)) * stride; // Knees bend back only
-                
-                a.rig.thighR.rotation.x = Math.sin(runCycle + Math.PI) * stride;
-                a.rig.shinR.rotation.x = Math.abs(Math.sin(runCycle + Math.PI + 1)) * stride;
+                if(a.cooldown>0) a.cooldown--;
+                if(a.cooldown<=0) { a.vel.add(acc); a.vel.multiplyScalar(CFG.friction); a.mesh.position.add(a.vel); }
+                if(a.vel.lengthSq()>0.001) a.mesh.rotation.y = Math.atan2(a.vel.x, a.vel.z);
 
-                // Spine Tilt (Lean into run)
-                a.rig.hips.rotation.x = speed * 2; 
-
-                // Shooting Stance Override
-                if(a.isShooting) {
-                    a.rig.armR.rotation.x = -2.5; // Arms up
-                    a.rig.armL.rotation.x = -2.5;
-                    a.rig.foreR.rotation.x = -0.5;
-                    a.rig.foreL.rotation.x = -0.5;
-                } else {
-                    // Arm Swing
-                    a.rig.armL.rotation.x = -a.rig.thighL.rotation.x * 0.8;
-                    a.rig.armR.rotation.x = -a.rig.thighR.rotation.x * 0.8;
-                }
+                // Collision -> Blocking Foul?
+                Game.actors.forEach(b => {
+                    if(a!==b && a.mesh.position.distanceTo(b.mesh.position) < 1.5) {
+                        // Push
+                        const push = a.mesh.position.clone().sub(b.mesh.position).normalize().multiplyScalar(0.05);
+                        a.mesh.position.add(push);
+                        
+                        // Check Blocking Foul (If B has ball and A is moving fast into B)
+                        if(Game.ball.owner === b && a.team !== b.team && a.vel.length() > 0.1) {
+                            if(Math.random() < CFG.foulChanceBlock) callFoul(a, b, "BLOCKING FOUL");
+                        }
+                    }
+                });
             });
 
-            // B. BALL PHYSICS
-            updateBallPhysics();
+            // Ball
+            const b = Game.ball;
+            if(b.owner) {
+                const p = b.owner.mesh.position;
+                b.pos.set(p.x + Math.sin(Date.now()*0.01), 3, p.z+1.0);
+            } else {
+                b.vel.y += CFG.gravity; b.pos.add(b.vel);
+                if(b.pos.y<0.6) { b.pos.y=0.6; b.vel.y*=-0.7; }
+                
+                const hoopZ = b.vel.z>0?47:-47;
+                if(Math.abs(b.pos.z-hoopZ)<1.5 && Math.abs(b.pos.x)<1.5 && Math.abs(b.pos.y-11)<1) {
+                    if(b.vel.y<0) score(b.vel.z>0?'away':'home');
+                }
+                // Rebound
+                Game.actors.forEach(a=>{
+                    if(a.mesh.position.distanceTo(b.pos)<2 && a.cooldown<=0) { b.owner=a; b.state='dribble'; }
+                });
+            }
+            b.mesh.position.copy(b.pos);
 
-            // C. CAMERA
-            const target = Game.ball.owner ? Game.ball.owner.mesh.position : Game.ball.mesh.position;
-            camera.position.x += (30 + target.x*0.1 - camera.position.x) * 0.05;
-            camera.position.z += (target.z*0.5 - camera.position.z) * 0.05;
-            camera.lookAt(target.x, 0, target.z);
+            // Cam
+            const t = b.owner ? b.owner.mesh.position : b.pos;
+            camera.position.x += (30 + t.x*0.1 - camera.position.x)*0.05;
+            camera.position.z += (t.z*0.5 - camera.position.z)*0.05;
+            camera.lookAt(t.x, 0, t.z);
 
             renderer.render(scene, camera);
         }
 
-        function updateBallPhysics() {
-            const b = Game.ball;
-            const bMesh = b.mesh;
+        // --- 4. FOUL SYSTEM ---
+        function callFoul(defender, offender, type) {
+            Game.mode = 'dead';
+            Game.fouls[defender.team]++;
+            updateHUD();
+            showNotify(type + "!");
 
-            if(b.owner) {
-                // DRIBBLE STATE
-                // Procedural dribble animation
-                const p = b.owner.mesh.position;
-                const time = Date.now() * 0.008;
-                const dribbleHeight = Math.abs(Math.sin(time)) * 3; // 0 to 3 units high
-                
-                // Hand follows ball roughly
-                // b.owner.rig.armR.rotation.x = ... (Add IK later)
+            // Check Bonus
+            const isBonus = Game.fouls[defender.team] >= CFG.bonusLimit;
+            const isShooting = offender.isShooting; // Assume flag set during shot
 
-                b.pos.set(
-                    p.x + Math.sin(time)*0.5 + (b.owner.vel.x*5), 
-                    dribbleHeight + 0.65, 
-                    p.z + Math.cos(time)*0.5 + (b.owner.vel.z*5) + 1.5
-                );
-                bMesh.position.copy(b.pos);
-                
-                // Shooting Logic
-                if(b.owner.user && keys['Space']) {
-                    b.owner.isShooting = true;
-                    b.owner.shotPower += 0.02;
-                    // Update Meter
-                    const meter = document.getElementById('shot-ui');
-                    meter.style.display = 'block';
-                    const screenPos = p.clone().project(camera);
-                    meter.style.left = (screenPos.x * .5 + .5) * window.innerWidth + 'px';
-                    meter.style.top = (-(screenPos.y * .5) + .5) * window.innerHeight - 50 + 'px';
-                    document.getElementById('shot-bar').style.width = Math.min(100, b.owner.shotPower*100) + '%';
-                } else if (b.owner.isShooting) {
-                    // Release
-                    shootBall(b.owner);
+            setTimeout(() => {
+                if(isShooting || isBonus) {
+                    startFreeThrows(offender, isShooting ? 2 : 1); // 2 shots if shooting, 1-and-1 logic simplified to 1
+                } else {
+                    resetInbound(offender.team);
                 }
+            }, 2000);
+        }
 
-            } else {
-                // FREE PHYSICS STATE
-                b.vel.y += CFG.gravity; // Apply Gravity
-                b.pos.add(b.vel);
-                
-                // Floor Collision
-                if(b.pos.y < 0.65) {
-                    b.pos.y = 0.65;
-                    b.vel.y *= -0.75; // Bounciness
-                    b.vel.x *= 0.98; // Friction
-                    b.vel.z *= 0.98;
+        function startFreeThrows(player, count) {
+            Game.mode = 'freethrow';
+            Game.ftState = { shooter: player, shots: count, taken: 0, active: true, val: 50, dir: 1, speed: 2 };
+            
+            // Move Camera & Players
+            const hoopZ = player.team==='home' ? -47 : 47;
+            const lineZ = player.team==='home' ? -32 : 32;
+            const dir = player.team==='home' ? -1 : 1;
+
+            player.mesh.position.set(0, 0, lineZ);
+            player.mesh.lookAt(0, 0, hoopZ);
+            Game.ball.owner = player;
+            Game.ball.state = 'dribble';
+
+            // Clear lane (Simple teleport away)
+            Game.actors.forEach(a => {
+                if(a !== player) a.mesh.position.set(100, 0, 0); // Hide others for simplicity or move to lane
+            });
+
+            // Cam behind shooter
+            camera.position.set(0, 20, lineZ - (15*dir));
+            camera.lookAt(0, 10, hoopZ);
+
+            document.getElementById('ft-ui').style.display = 'block';
+        }
+
+        function updateFreeThrow() {
+            const st = Game.ftState;
+            if(!st.active) return;
+
+            // Bounce Meter
+            st.val += st.speed * st.dir;
+            if(st.val > 100 || st.val < 0) st.dir *= -1;
+            document.getElementById('ft-cursor').style.left = st.val + '%';
+
+            // Dribble Anim
+            const p = st.shooter.mesh.position;
+            Game.ball.pos.set(p.x, 3 + Math.sin(Date.now()*0.02), p.z + (st.shooter.team==='home'?-1:1));
+            Game.ball.mesh.position.copy(Game.ball.pos);
+        }
+
+        function releaseFreeThrow() {
+            const st = Game.ftState;
+            if(!st.active) return;
+            st.active = false;
+
+            // Check Accuracy (Green Zone 45-55)
+            const accuracy = Math.abs(st.val - 50);
+            const isGood = accuracy < 8; // 8% tolerance
+
+            // Animate Shot
+            Game.ball.owner = null;
+            const hoopZ = st.shooter.team==='home' ? -47 : 47;
+            const dist = Math.abs(hoopZ - st.shooter.mesh.position.z);
+            
+            // Trajectory
+            const errX = (Math.random()-0.5) * (isGood ? 0.01 : 0.2);
+            const velZ = (hoopZ - st.shooter.mesh.position.z) / 40;
+            const velY = 0.8 + (dist * 0.005);
+            Game.ball.vel.set(errX, velY, velZ);
+
+            setTimeout(() => {
+                if(isGood) {
+                    Game.scores[st.shooter.team]++;
+                    updateHUD();
+                    showNotify("GOOD!");
+                } else {
+                    showNotify("MISS!");
                 }
+                
+                st.taken++;
+                if(st.taken < st.shots) {
+                    setTimeout(() => startFreeThrows(st.shooter, st.shots), 2000); // Next shot
+                } else {
+                    setTimeout(() => resetInbound(st.shooter.team==='home'?'away':'home'), 2000);
+                }
+            }, 1000);
+        }
 
-                // Rim/Backboard Collision (Simple Box Check)
-                // Hoop is at Z = +/- 47, Y = 10
-                const hoopZ = b.vel.z > 0 ? 47 : -47;
-                if(Math.abs(b.pos.z - hoopZ) < 1.5 && Math.abs(b.pos.x) < 1.5 && Math.abs(b.pos.y - 10) < 1) {
-                    // In the cylinder?
-                    if(b.vel.y < 0) {
-                        Game.scores[b.vel.z > 0 ? 'away':'home'] += 2; // Score
-                        document.getElementById('sc-h').innerText = Game.scores.home;
-                        document.getElementById('sc-a').innerText = Game.scores.away;
-                        resetPlay(b.vel.z > 0 ? 'home':'away');
+        // --- 5. UTILS & INPUT ---
+        window.addEventListener('keydown', e => {
+            if(e.key==='ArrowUp') keys.ArrowUp=true; if(e.key==='ArrowDown') keys.ArrowDown=true;
+            if(e.key==='ArrowLeft') keys.ArrowLeft=true; if(e.key==='ArrowRight') keys.ArrowRight=true;
+            
+            if(e.code==='Space') {
+                if(Game.mode === 'freethrow') releaseFreeThrow();
+                else if(Game.mode === 'play') { /* Jump/Shoot logic */ }
+            }
+            
+            if(e.key==='x') {
+                const u = Game.actors.find(a=>a.user);
+                // Steal Logic
+                if(u && !Game.ball.owner || Game.ball.owner.team !== u.team) {
+                    if(Game.ball.owner && u.mesh.position.distanceTo(Game.ball.mesh.position) < CFG.stealRange) {
+                        if(Math.random() < 0.3) {
+                            showNotify("STEAL!");
+                            Game.ball.owner = null; Game.ball.vel.y = 0.5; // Pop loose
+                        } else {
+                            // Failed steal -> Reach Foul?
+                            if(Math.random() < CFG.foulChanceReach) callFoul(u, Game.ball.owner, "REACH-IN");
+                            else { u.cooldown = 60; } // Stun
+                        }
                     }
                 }
-
-                bMesh.position.copy(b.pos);
-                bMesh.rotation.x += b.vel.z;
-                bMesh.rotation.z -= b.vel.x;
             }
-        }
+        });
+        window.addEventListener('keyup', e => {
+            if(e.key.startsWith('Arrow')) keys[e.key]=false;
+        });
 
-        function shootBall(player) {
-            Game.ball.owner = null;
-            player.isShooting = false;
-            document.getElementById('shot-ui').style.display='none';
-
-            // Projectile Physics Calculation
-            // Target Hoop
-            const hoopZ = player.team==='home' ? -47 : 47;
-            const dist = Math.sqrt(Math.pow(0 - player.mesh.position.x, 2) + Math.pow(hoopZ - player.mesh.position.z, 2));
-            
-            // Calculate Velocity needed to reach distance
-            // v = sqrt( (g * x^2) / (2 * cos^2(theta) * (x * tan(theta) + y)) )
-            // Simplified approximation for game feel:
-            const power = player.shotPower; // 0 to 1
-            player.shotPower = 0;
-
-            // Accuracy based on timing (0.7 is sweet spot)
-            const accuracy = 1 - Math.abs(power - 0.7); 
-            const errorX = (Math.random()-0.5) * (1-accuracy) * 0.5;
-
-            const timeToHoop = dist / 25; 
-            
-            Game.ball.vel.x = (0 - player.mesh.position.x) / 35 + errorX;
-            Game.ball.vel.z = (hoopZ - player.mesh.position.z) / 35;
-            Game.ball.vel.y = 0.8 + (dist*0.01); // Arc based on distance
-            
-            Game.ball.state = 'shot';
-        }
-
-        function resetPlay(possession) {
-            Game.possession = possession;
-            Game.ball.vel.set(0,0,0);
-            Game.ball.owner = null;
-            
-            // Teleport
-            const pg = Game.actors.find(a => a.team === possession && a.role === 0);
-            Game.ball.owner = pg;
-            Game.ball.state = 'dribble';
-            
+        function resetInbound(team) {
+            Game.mode = 'play';
+            document.getElementById('ft-ui').style.display='none';
+            // Reset Positions
             Game.actors.forEach(a => {
-                a.mesh.position.set((a.role-2)*6, 0, a.team==='home'?15:-15);
+                a.mesh.position.set((a.role-2)*5, 0, a.team==='home'?15:-15);
                 a.vel.set(0,0,0);
             });
+            // Ball to PG
+            const pg = Game.actors.find(a => a.team === team && a.role === 0);
+            Game.ball.owner = pg; Game.ball.state='dribble';
+            showNotify("INBOUND");
         }
 
-        // --- 5. INPUT ---
-        window.onkeydown = e => {
-            if(e.key === 'Escape') togglePause();
-            if(e.code === 'Space') keys['Space'] = true;
-            if(e.key === 'Shift') keys['Shift'] = true;
-            if(e.key.startsWith('Arrow')) keys[e.key] = true;
-            if(e.key === 'x') pass();
-        };
-        window.onkeyup = e => {
-            if(e.code === 'Space') keys['Space'] = false;
-            if(e.key === 'Shift') keys['Shift'] = false;
-            if(e.key.startsWith('Arrow')) keys[e.key] = false;
-        };
-
-        function pass() {
-            if(!Game.ball.owner || !Game.ball.owner.user) return;
-            const u = Game.ball.owner;
-            // Find nearest teammate in front
-            // Simplified: Cycle to next role
-            const mate = Game.actors.find(a => a.team === u.team && a.role === (u.role+1)%5);
-            
-            Game.ball.owner = null;
-            const dx = mate.mesh.position.x - u.mesh.position.x;
-            const dz = mate.mesh.position.z - u.mesh.position.z;
-            Game.ball.vel.set(dx*0.05, 0.4, dz*0.05); // Pass speed
-            
-            // Switch user control immediately? No, wait for catch.
-            // For now, auto switch user for gameplay flow
-            u.user = false; mate.user = true;
+        function score(team) {
+            Game.scores[team]+=2;
+            updateHUD();
+            resetInbound(team==='home'?'away':'home');
         }
 
-        function togglePause() {
-            Game.paused = !Game.paused;
-            document.getElementById('pause').style.display = Game.paused ? 'flex' : 'none';
+        function showNotify(txt) {
+            const el = document.getElementById('feedback');
+            el.innerText = txt; el.classList.add('active');
+            setTimeout(()=>el.classList.remove('active'), 1500);
+        }
+
+        function updateHUD() {
+            document.getElementById('sc-h').innerText = Game.scores.home;
+            document.getElementById('sc-a').innerText = Game.scores.away;
+            document.getElementById('foul-h').innerText = "FLS: " + Game.fouls.home;
+            document.getElementById('foul-a').innerText = "FLS: " + Game.fouls.away;
+            if(Game.fouls.home >= 5) document.getElementById('foul-h').style.color = 'red';
+            if(Game.fouls.away >= 5) document.getElementById('foul-a').style.color = 'red';
         }
 
     </script>
