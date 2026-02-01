@@ -2,447 +2,405 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Basketball AI Engine v12.0</title>
+    <title>Basketball Sim v15.0 (Spacing Engine)</title>
     <style>
-        :root { --blue: #3b82f6; --red: #ef4444; --bg: #050505; --text: #eee; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', monospace; overflow: hidden; user-select: none; }
+        :root { --blue: #2563eb; --red: #dc2626; --dark: #0f172a; --text: #f8fafc; }
+        body { margin: 0; background: #050505; color: var(--text); font-family: 'Segoe UI', monospace; overflow: hidden; user-select: none; }
         
-        /* UI */
+        /* UI LAYOUT */
         .screen { position: absolute; inset: 0; display: none; }
         .screen.active { display: block; }
-        
-        /* HUD */
-        .hud-score {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; background: #111; border: 2px solid #333; border-radius: 8px;
-            font-weight: 900; font-family: 'Arial Narrow', sans-serif;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        }
-        .hud-team { padding: 10px 20px; font-size: 24px; color: white; }
-        .hud-val { background: #fff; color: #000; padding: 10px 15px; font-size: 32px; font-family: monospace; }
-        
-        /* AI DEBUGGER (Top Right) */
-        .ai-debug {
-            position: absolute; top: 20px; right: 20px; width: 250px;
-            background: rgba(0,0,0,0.8); padding: 15px; border: 1px solid #333;
-            font-size: 10px; font-family: monospace; pointer-events: none;
-        }
-        .ai-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .bar-bg { width: 50px; height: 6px; background: #333; }
-        .bar-fill { height: 100%; background: var(--blue); }
 
-        /* MENU */
+        /* HUD */
+        .tv-hud {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: flex-end; font-weight: 900; 
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.8));
+        }
+        .hud-bar { display: flex; background: #111; border: 2px solid #333; border-radius: 8px; overflow: hidden; }
+        .hud-team { width: 90px; padding: 15px; text-align: center; font-size: 20px; color: white; display: flex; align-items: center; justify-content: center; }
+        .hud-score { width: 70px; background: #fff; color: #000; font-size: 36px; display: flex; align-items: center; justify-content: center; font-family: monospace; }
+        .hud-clock { background: #222; color: #f00; width: 110px; font-size: 28px; display: flex; align-items: center; justify-content: center; font-family: monospace; border-left: 1px solid #444; }
+
+        /* MENUS */
         #menu { background: #080808; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .title { font-size: 80px; font-weight: 900; line-height: 0.9; text-align: center; margin-bottom: 40px; text-transform: uppercase; }
+        .title { font-size: 80px; font-weight: 900; line-height: 0.9; text-align: center; margin-bottom: 40px; text-transform: uppercase; letter-spacing: -2px; }
         .btn { 
-            background: transparent; border: 1px solid #444; color: white; padding: 15px 40px; 
-            font-size: 14px; font-weight: bold; margin: 5px; cursor: pointer; width: 250px; 
+            background: transparent; border: 1px solid #444; color: white; padding: 20px 60px; 
+            font-size: 16px; font-weight: 900; margin: 10px; cursor: pointer; width: 350px; 
             text-transform: uppercase; letter-spacing: 2px; transition: 0.2s;
         }
-        .btn:hover { background: #fff; color: #000; }
+        .btn:hover { background: #fff; color: #000; transform: scale(1.05); }
         .btn.primary { border-color: var(--blue); color: var(--blue); }
         .btn.primary:hover { background: var(--blue); color: white; }
 
-        .tag { position: absolute; font-size: 10px; font-weight: bold; text-shadow: 0 1px 2px black; pointer-events: none; color: white; margin-top: -60px; text-align: center; width: 100px; margin-left: -50px; }
+        /* PAUSE MENU */
+        .pause-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .pause-overlay.active { display: flex; }
+        
+        /* NOTIFICATIONS */
+        .notify { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; color: #fbbf24; text-shadow: 0 5px 20px black; pointer-events: none; opacity: 0; transition: opacity 0.2s; text-align: center; width: 100%; }
+        
+        .debug-overlay { position: absolute; top: 10px; right: 10px; font-size: 10px; color: #444; font-family: monospace; pointer-events: none; text-align: right; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.150.1/three.min.js"></script>
 </head>
 <body>
 
     <div id="menu" class="screen active">
-        <div class="title">Neuro<br><span style="color:var(--blue)">Hoops</span> AI</div>
-        <div style="color:#666; margin-bottom:40px; font-size:12px;">MACHINE LEARNING SIMULATION</div>
-        <button class="btn primary" onclick="initGame()">Start Simulation</button>
+        <div class="title">Pro<br><span style="color:var(--blue)">Spacing</span> Engine</div>
+        <div style="color:#666; margin-bottom:40px; letter-spacing: 3px;">V15.0 AI OVERHAUL</div>
+        <button class="btn primary" onclick="initGame()">Start Match</button>
+        <button class="btn" onclick="alert('Roster Editor in DLC')">Rosters</button>
     </div>
 
     <div id="game" class="screen">
-        <div class="hud-score">
-            <div class="hud-team" style="background:var(--blue)">HOME</div>
-            <div class="hud-val" id="sc-h">0</div>
-            <div class="hud-val" id="sc-a">0</div>
-            <div class="hud-team" style="background:var(--red)">AWAY</div>
+        <div class="tv-hud">
+            <div class="hud-bar">
+                <div class="hud-team" style="background:var(--blue)">HOME</div>
+                <div class="hud-score" id="sc-h">0</div>
+                <div class="hud-score" id="sc-a">0</div>
+                <div class="hud-team" style="background:var(--red)">AWAY</div>
+                <div class="hud-clock" id="clock">12:00</div>
+            </div>
         </div>
-
-        <div class="ai-debug" id="ai-log">
-            <strong style="color:var(--blue)">AI BRAIN FEED</strong><br>
-            <div id="ai-feed">Initializing Neural Net...</div>
+        <div class="notify" id="notify">SWISH!</div>
+        <div class="debug-overlay">AI SPACING: 5-OUT<br>DEFENSE: MAN-TO-MAN</div>
+        
+        <div id="pause" class="pause-overlay">
+            <h1 style="font-size:60px; margin-bottom:40px;">PAUSED</h1>
+            <div style="display:flex; gap:40px; margin-bottom:40px;">
+                <div id="box-h" style="text-align:right"></div>
+                <div id="box-a" style="text-align:left"></div>
+            </div>
+            <button class="btn" onclick="togglePause()">RESUME</button>
+            <button class="btn" onclick="location.reload()">QUIT</button>
         </div>
     </div>
 
     <script>
-        // --- 1. NEURAL ENGINE (Utility AI) ---
-        class Brain {
-            constructor(player) {
-                this.p = player;
-                this.memory = { shotsMade: [], shotsMissed: [] }; // Heatmap data
-                this.decisionTimer = 0;
-                this.currentThought = "Idle";
-            }
+        // --- 1. SPACING ENGINE (The Fix for Clumping) ---
+        // Coordinates for the 5-Out Offense slots relative to the hoop
+        const SLOTS = [
+            { id: 0, name: 'TOP', x: 0, z: 30 },
+            { id: 1, name: 'WING_L', x: -22, z: 22 },
+            { id: 2, name: 'WING_R', x: 22, z: 22 },
+            { id: 3, name: 'CORNER_L', x: -24, z: 2 },
+            { id: 4, name: 'CORNER_R', x: 24, z: 2 }
+        ];
 
-            // The Core "Thinking" Loop
-            update(dt, world) {
-                this.decisionTimer -= dt;
-                if(this.decisionTimer > 0) return; // Don't think every frame (jittery)
-                this.decisionTimer = 0.1 + Math.random()*0.1; // Think every ~150ms
-
-                if(world.ball.owner === this.p) {
-                    this.decideOffenseBall(world);
-                } else if(this.p.team === world.possession) {
-                    this.decideOffenseOffBall(world);
-                } else {
-                    this.decideDefense(world);
-                }
-            }
-
-            decideOffenseBall(world) {
-                // UTILITY SCORING SYSTEM
-                // We calculate a score (0-100) for every action. Highest wins.
-                
-                const hoop = this.p.team === 'home' ? new THREE.Vector3(0,0,43) : new THREE.Vector3(0,0,-43);
-                const distToHoop = this.p.mesh.position.distanceTo(hoop);
-                const defender = this.findNearestOpponent(world);
-                const distToDef = defender ? this.p.mesh.position.distanceTo(defender.mesh.position) : 10;
-
-                // 1. SHOOT SCORE
-                // Base skill + Openness - Distance Penalty
-                let shootScore = this.p.stats.sht + (distToDef * 2) - (distToHoop * 0.8);
-                // Heatmap Bonus: Have I made shots here before?
-                if(this.checkMemory(this.p.mesh.position)) shootScore += 15;
-
-                // 2. PASS SCORE
-                let passScore = 0;
-                let bestMate = null;
-                world.actors.forEach(a => {
-                    if(a.team === this.p.team && a !== this.p) {
-                        // Raycast check (Is passing lane open?)
-                        if(this.isPassingLaneOpen(this.p.mesh.position, a.mesh.position, world)) {
-                            // Does teammate have a better shot?
-                            const mateDistHoop = a.mesh.position.distanceTo(hoop);
-                            let potential = a.stats.sht - (mateDistHoop * 0.5); 
-                            if(potential > passScore) { passScore = potential; bestMate = a; }
-                        }
-                    }
-                });
-
-                // 3. DRIVE SCORE
-                // Higher if closer to hoop and defender is slow
-                let driveScore = (this.p.stats.spd * 0.8) + (100 - distToHoop);
-                if(distToDef < 3) driveScore -= 40; // Defender is smothering
-
-                // EXECUTE
-                this.currentThought = `S:${Math.floor(shootScore)} P:${Math.floor(passScore)} D:${Math.floor(driveScore)}`;
-                
-                if(shootScore > 80 || (shootScore > driveScore && shootScore > passScore)) {
-                    this.p.action = 'shoot';
-                } else if(passScore > driveScore && bestMate) {
-                    this.p.action = 'pass';
-                    this.p.target = bestMate;
-                } else {
-                    this.p.action = 'drive';
-                    this.p.targetPos = hoop;
-                }
-            }
-
-            decideOffenseOffBall(world) {
-                // SPACING ALGORITHM (Boids Separation)
-                // Find open space away from ball carrier and other teammates
-                const ballPos = world.ball.mesh.position;
-                let moveVec = new THREE.Vector3();
-                
-                // Repel from teammates
-                world.actors.forEach(a => {
-                    if(a.team === this.p.team) {
-                        const d = this.p.mesh.position.distanceTo(a.mesh.position);
-                        if(d < 10) { // Too close
-                            const push = this.p.mesh.position.clone().sub(a.mesh.position).normalize();
-                            moveVec.add(push);
-                        }
-                    }
-                });
-
-                // Attract to "Slots" (Corners/Wings)
-                // Simplified: Move generally towards hoop Z but stay wide X
-                const hoopZ = this.p.team === 'home' ? 40 : -40;
-                const idealZ = (ballPos.z + hoopZ) * 0.5;
-                const idealX = this.p.mesh.position.x > 0 ? 20 : -20; // Stay wide
-                
-                moveVec.add(new THREE.Vector3(idealX - this.p.mesh.position.x, 0, idealZ - this.p.mesh.position.z).multiplyScalar(0.1));
-                
-                this.p.action = 'move';
-                this.p.targetPos = this.p.mesh.position.clone().add(moveVec);
-            }
-
-            decideDefense(world) {
-                // STATE: STAY BETWEEN MAN AND HOOP
-                // 1. Identify Assignment
-                const ballOwner = world.ball.owner;
-                const myMan = this.p.matchup; 
-                const hoopZ = this.p.team === 'home' ? -43 : 43; // Defending hoop
-
-                if(!myMan) return;
-
-                // Help Logic: If ball carrier is close to hoop and my man is far away, HELP!
-                const ballDistHoop = ballOwner ? Math.abs(ballOwner.mesh.position.z - hoopZ) : 999;
-                const iAmCloseToHoop = Math.abs(this.p.mesh.position.z - hoopZ) < 20;
-                
-                if(ballOwner && ballDistHoop < 15 && iAmCloseToHoop && ballOwner !== myMan) {
-                    this.currentThought = "HELP DEFENSE";
-                    this.p.action = 'move';
-                    this.p.targetPos = ballOwner.mesh.position; // Double team
-                } else {
-                    this.currentThought = "Lockdown";
-                    // Calculate "Deny" position
-                    // Point on line between MyMan and Hoop
-                    const manPos = myMan.mesh.position;
-                    const goalPos = new THREE.Vector3(0,0,hoopZ);
-                    const guardSpot = new THREE.Vector3().lerpVectors(manPos, goalPos, 0.3); // 30% sag
-                    
-                    this.p.action = 'move';
-                    this.p.targetPos = guardSpot;
-                }
-            }
-
-            findNearestOpponent(world) {
-                let nearest = null; let minD = 999;
-                world.actors.forEach(a => {
-                    if(a.team !== this.p.team) {
-                        const d = this.p.mesh.position.distanceTo(a.mesh.position);
-                        if(d < minD) { minD = d; nearest = a; }
-                    }
-                });
-                return nearest;
-            }
-
-            isPassingLaneOpen(from, to, world) {
-                // Simple ray check against opponents
-                const ray = to.clone().sub(from);
-                const len = ray.length();
-                let clear = true;
-                world.actors.forEach(a => {
-                    if(a.team !== this.p.team) {
-                        // Project opponent onto ray
-                        // (Simplified: just distance check to midpoint)
-                        const mid = from.clone().add(ray.clone().multiplyScalar(0.5));
-                        if(a.mesh.position.distanceTo(mid) < 3) clear = false;
-                    }
-                });
-                return clear;
-            }
-
-            checkMemory(pos) {
-                // Does this position exist in "shotsMade"?
-                return this.memory.shotsMade.some(p => p.distanceTo(pos) < 5);
-            }
-        }
-
-        // --- 2. GAME ENGINE ---
+        // --- 2. GAME STATE ---
         const Game = {
-            active: false,
-            actors: [],
-            ball: { mesh:null, owner:null, vel:new THREE.Vector3(), state:'free' },
-            possession: 'home',
-            scores: { home:0, away:0 }
+            active: false, paused: false, clock: 720,
+            possession: 'home', // 'home' or 'away'
+            state: 'play', // 'play', 'shot', 'reset'
+            scores: { home: 0, away: 0 },
+            teams: {
+                home: { id: 'home', color: 0x2563eb, roster: [] },
+                away: { id: 'away', color: 0xdc2626, roster: [] }
+            }
         };
 
-        let scene, camera, renderer, clock;
+        // --- 3. 3D SETUP ---
+        let scene, camera, renderer;
+        let actors = [], ball;
         const keys = {};
 
         function initGame() {
             document.getElementById('menu').classList.remove('active');
             document.getElementById('game').classList.add('active');
             
-            // Three.js Setup
-            scene = new THREE.Scene(); scene.background = new THREE.Color(0x111);
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 60, 80); camera.lookAt(0,0,0);
+            // Scene
+            scene = new THREE.Scene(); scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.Fog(0x050505, 40, 150);
+            
+            camera = new THREE.PerspectiveCamera(40, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 50, 85); camera.lookAt(0,0,0);
             
             renderer = new THREE.WebGLRenderer({antialias:true});
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
             document.getElementById('game').appendChild(renderer.domElement);
 
-            // Lighting & Court
+            // Lights
             const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
-            const sun = new THREE.DirectionalLight(0xffffff, 1); 
-            sun.position.set(10,50,20); sun.castShadow=true; 
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2); 
+            sun.position.set(20, 80, 30); sun.castShadow = true;
             sun.shadow.mapSize.set(2048,2048); scene.add(sun);
 
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(100,100), new THREE.MeshStandardMaterial({color:0x222}));
-            floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
-            
-            // Painted Lines
+            // Court
             const cvs = document.createElement('canvas'); cvs.width=1024; cvs.height=2048; const ctx=cvs.getContext('2d');
-            ctx.fillStyle='#dcb388'; ctx.fillRect(0,0,1024,2048); ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380); ctx.fillRect(362,1668,300,380);
-            ctx.strokeStyle='white'; ctx.lineWidth=20; ctx.strokeRect(50,50,924,1948);
+            ctx.fillStyle='#e0b080'; ctx.fillRect(0,0,1024,2048); // Wood
+            ctx.fillStyle='#1e3a8a'; ctx.fillRect(362,0,300,380); ctx.fillRect(362,1668,300,380); // Paint
+            ctx.strokeStyle='white'; ctx.lineWidth=15; ctx.strokeRect(50,50,924,1948); // Border
+            ctx.beginPath(); ctx.moveTo(50,1024); ctx.lineTo(974,1024); ctx.stroke(); // Half
+            ctx.beginPath(); ctx.arc(512,140,450,0,Math.PI); ctx.stroke(); // 3PT
+            ctx.beginPath(); ctx.arc(512,1908,450,Math.PI,0); ctx.stroke();
+            
             const tex = new THREE.CanvasTexture(cvs); tex.anisotropy=16;
-            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex}));
-            court.rotation.x = -Math.PI/2; court.position.y=0.01; court.receiveShadow=true; scene.add(court);
+            const court = new THREE.Mesh(new THREE.PlaneGeometry(50,94), new THREE.MeshStandardMaterial({map:tex, roughness:0.4}));
+            court.rotation.x = -Math.PI/2; court.receiveShadow=true; scene.add(court);
 
             // Hoops
-            const mkHoop=(z)=>{
-                const g=new THREE.Group();
-                const p=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,14), new THREE.MeshStandardMaterial({color:0x333})); p.position.y=7; g.add(p);
-                const b=new THREE.Mesh(new THREE.BoxGeometry(6,4,0.2), new THREE.MeshStandardMaterial({color:0xffffff})); b.position.set(0,13,1.5); g.add(b);
-                const r=new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1,16,16), new THREE.MeshStandardMaterial({color:'orange'})); r.position.set(0,11,3); r.rotation.x=Math.PI/2; g.add(r);
+            const makeHoop = (z) => {
+                const g = new THREE.Group();
+                const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,14), new THREE.MeshStandardMaterial({color:0x222})); p.position.y=7; g.add(p);
+                const b = new THREE.Mesh(new THREE.BoxGeometry(6,4,0.1), new THREE.MeshStandardMaterial({color:0xffffff})); b.position.set(0,13,1); g.add(b);
+                const r = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.1), new THREE.MeshStandardMaterial({color:'orange'})); r.position.set(0,11,3); r.rotation.x=Math.PI/2; g.add(r);
                 g.position.z=z; if(z>0) g.rotation.y=Math.PI; scene.add(g);
-            };
-            mkHoop(-47); mkHoop(47);
+            }
+            makeHoop(-47); makeHoop(47);
 
             // Spawn Players
-            Game.actors = [];
-            const spawnTeam = (team, color, z) => {
-                for(let i=0; i<5; i++) {
-                    const g = new THREE.Group();
-                    const mat = new THREE.MeshStandardMaterial({color:color});
-                    const skin = new THREE.MeshStandardMaterial({color:0x8d5524});
-                    
-                    const body = new THREE.Mesh(new THREE.CapsuleGeometry(1, 3, 4, 8), mat);
-                    body.position.y = 2.5; body.castShadow=true; g.add(body);
-                    const head = new THREE.Mesh(new THREE.SphereGeometry(0.7), skin);
-                    head.position.y = 5; g.add(head);
-                    
-                    g.position.set((i-2)*8, 0, z);
-                    scene.add(g);
-
-                    // Add text tag
-                    const div = document.createElement('div');
-                    div.className = 'tag'; div.innerText = team + ' ' + (i+1);
-                    document.body.appendChild(div);
-
-                    const p = {
-                        mesh: g, team: team, id: i,
-                        stats: { spd: 70+Math.random()*20, sht: 60+Math.random()*30 },
-                        brain: null, tag: div,
-                        matchup: null
-                    };
-                    p.brain = new Brain(p);
-                    Game.actors.push(p);
-                }
-            };
-            spawnTeam('home', 0x3b82f6, 15);
-            spawnTeam('away', 0xef4444, -15);
-
-            // Assign Matchups
-            Game.actors.forEach(a => {
-                if(a.team === 'home') {
-                    const opp = Game.actors.find(b => b.team === 'away' && b.id === a.id);
-                    a.matchup = opp; opp.matchup = a;
-                }
-            });
+            actors = [];
+            spawnTeam(Game.teams.home, 1);
+            spawnTeam(Game.teams.away, -1);
 
             // Ball
-            Game.ball.mesh = new THREE.Mesh(new THREE.SphereGeometry(0.7), new THREE.MeshStandardMaterial({color:'orange'}));
-            scene.add(Game.ball.mesh);
-            Game.ball.owner = Game.actors[0]; Game.ball.state='dribble';
+            ball = { mesh: new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshStandardMaterial({color:'orange'})), pos: new THREE.Vector3(0,5,0), vel: new THREE.Vector3(), owner:null, state:'loose' };
+            scene.add(ball.mesh);
 
-            // Input
-            window.onkeydown = e => keys[e.code] = true;
-            window.onkeyup = e => { 
-                keys[e.code] = false; 
-                if(e.code === 'Space') playerAction();
-            };
+            // Assign Matchups & Give Ball
+            actors.forEach(a => {
+                if(a.team === 'home') {
+                    a.matchup = actors.find(b => b.team === 'away' && b.role === a.role);
+                    a.matchup.matchup = a;
+                }
+            });
+            ball.owner = actors[0]; ball.state='dribble';
 
             Game.active = true;
-            clock = new THREE.Clock();
-            loop();
+            animate();
         }
 
-        // --- 3. LOOP ---
-        function loop() {
-            if(!Game.active) return;
-            requestAnimationFrame(loop);
-            const dt = clock.getDelta();
-
-            // 1. Update Brains & Physics
-            Game.actors.forEach(a => {
-                // AI THINK
-                if(!a.user) a.brain.update(dt, Game);
-
-                // MOVE EXECUTION
-                let moveDir = new THREE.Vector3();
+        // --- 4. PLAYER RIG GENERATOR (Humanoid) ---
+        function spawnTeam(team, dir) {
+            for(let i=0; i<5; i++) {
+                const g = new THREE.Group();
                 
-                // User Control (First Player Home)
-                if(a.team === 'home' && a.id === 0) {
-                    a.user = true; // Mark as user
-                    if(keys['ArrowUp']) moveDir.z -= 1;
-                    if(keys['ArrowDown']) moveDir.z += 1;
-                    if(keys['ArrowLeft']) moveDir.x -= 1;
-                    if(keys['ArrowRight']) moveDir.x += 1;
+                // Materials
+                const matJer = new THREE.MeshStandardMaterial({color:team.color});
+                const matSkin = new THREE.MeshStandardMaterial({color:0x8d5524});
+                
+                // --- Skeleton ---
+                const hip = new THREE.Group(); hip.position.y = 3; g.add(hip);
+                
+                // Torso
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.6), matJer);
+                torso.position.y = 1; hip.add(torso);
+                
+                // Head
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), matSkin);
+                head.position.y = 2.4; hip.add(head);
+
+                // Arms
+                const mkLimb = (x, col) => {
+                    const l = new THREE.Group(); l.position.set(x, 1.8, 0);
+                    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), col); upper.position.y=-0.6;
+                    l.add(upper); return l;
+                }
+                const armL = mkLimb(-0.8, matSkin); hip.add(armL);
+                const armR = mkLimb(0.8, matSkin); hip.add(armR);
+
+                // Legs
+                const mkLeg = (x) => {
+                    const l = new THREE.Group(); l.position.set(x, 0, 0);
+                    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 0.4), matJer); thigh.position.y=-0.75;
+                    const shin = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.5, 0.35), matSkin); shin.position.y=-2.25;
+                    l.add(thigh, shin); return l;
+                }
+                const legL = mkLeg(-0.4); hip.add(legL);
+                const legR = mkLeg(0.4); hip.add(legR);
+
+                g.position.set(0, 0, dir*20); // Temp spawn
+                scene.add(g);
+
+                // Add to Logic list
+                team.roster.push({
+                    name: `Player ${i+1}`,
+                    pts: 0, ast: 0
+                });
+
+                actors.push({
+                    mesh: g, limbs: {hip, legL, legR, armL, armR},
+                    team: team.id, role: i, // 0=PG, 1=SG...
+                    matchup: null,
+                    user: (team.id==='home' && i===0)
+                });
+            }
+        }
+
+        // --- 5. AI & PHYSICS LOOP ---
+        function animate() {
+            if(!Game.active) return;
+            requestAnimationFrame(animate);
+            if(Game.paused) return;
+
+            // 1. UPDATE PLAYERS
+            actors.forEach(a => {
+                let move = new THREE.Vector3();
+                const hoopZ = a.team==='home' ? -43 : 43; // Attacking Hoop
+                const defZ = a.team==='home' ? 43 : -43;  // Defending Hoop
+
+                // --- OFFENSE AI ---
+                if(Game.possession === a.team) {
+                    if(ball.owner === a) {
+                        // BALL HANDLER
+                        if(a.user) {
+                            if(keys['ArrowUp']) move.z-=1; if(keys['ArrowDown']) move.z+=1;
+                            if(keys['ArrowLeft']) move.x-=1; if(keys['ArrowRight']) move.x+=1;
+                            if(move.lengthSq()>0) move.normalize().multiplyScalar(0.2);
+                        } else {
+                            // CPU Handler: Attack rim slowly
+                            const dx = 0 - a.mesh.position.x;
+                            const dz = hoopZ - a.mesh.position.z;
+                            if(Math.abs(dz) > 5) move.set(dx,0,dz).normalize().multiplyScalar(0.15);
+                        }
+                    } else {
+                        // OFF BALL (5-OUT SPACING)
+                        // Map role to slot.
+                        // Home attacks neg Z. Away attacks pos Z.
+                        const slot = SLOTS[a.role]; 
+                        const tz = a.team==='home' ? (hoopZ + slot.z) : (hoopZ - slot.z);
+                        const tx = slot.x;
+                        
+                        // Move to slot
+                        const dx = tx - a.mesh.position.x;
+                        const dz = tz - a.mesh.position.z;
+                        if(Math.sqrt(dx*dx+dz*dz) > 1.0) {
+                            move.set(dx, 0, dz).normalize().multiplyScalar(0.18);
+                        }
+                    }
                 } 
-                // AI Control
+                // --- DEFENSE AI ---
                 else {
-                    if(a.action === 'move' || a.action === 'drive') {
-                        moveDir.subVectors(a.targetPos, a.mesh.position).normalize();
+                    if(a.matchup) {
+                        // Stay between man and hoop (Sag logic)
+                        const manPos = a.matchup.mesh.position;
+                        const goalPos = new THREE.Vector3(0,0,defZ);
+                        // Lerp 30% from Man to Hoop
+                        const guardSpot = new THREE.Vector3().lerpVectors(manPos, goalPos, 0.3);
+                        
+                        const dx = guardSpot.x - a.mesh.position.x;
+                        const dz = guardSpot.z - a.mesh.position.z;
+                        if(Math.sqrt(dx*dx+dz*dz) > 0.5) {
+                            move.set(dx,0,dz).normalize().multiplyScalar(0.17);
+                        }
                     }
                 }
 
-                // Apply Move
-                if(moveDir.lengthSq() > 0) {
-                    const spd = (a.stats.spd / 10) * dt;
-                    a.mesh.position.add(moveDir.multiplyScalar(spd));
-                    a.mesh.lookAt(a.mesh.position.clone().add(moveDir));
-                }
-
-                // Collisions (Simple Push)
-                Game.actors.forEach(b => {
-                    if(a!==b && a.mesh.position.distanceTo(b.mesh.position) < 2) {
-                        const push = a.mesh.position.clone().sub(b.mesh.position).normalize().multiplyScalar(0.1);
-                        a.mesh.position.add(push);
+                // COLLISION
+                actors.forEach(b => {
+                    if(a!==b && a.mesh.position.distanceTo(b.mesh.position) < 1.5) {
+                        const push = a.mesh.position.clone().sub(b.mesh.position).normalize().multiplyScalar(0.05);
+                        move.add(push);
                     }
                 });
 
-                // Update Tag Pos
-                const vec = a.mesh.position.clone();
-                vec.y += 6;
-                vec.project(camera);
-                const x = (vec.x * .5 + .5) * window.innerWidth;
-                const y = (-(vec.y * .5) + .5) * window.innerHeight;
-                a.tag.style.transform = `translate(${x}px, ${y}px)`;
-                
-                // Debug text
-                if(a.id === 0 && a.team === 'home') {
-                    document.getElementById('ai-feed').innerHTML = `THOUGHT: ${a.brain.currentThought}`;
+                // APPLY & ANIMATE
+                a.mesh.position.add(move);
+                if(move.lengthSq() > 0.001) {
+                    a.mesh.lookAt(a.mesh.position.clone().add(move));
+                    // Run Cycle
+                    const t = Date.now()*0.015;
+                    a.limbs.legL.rotation.x = Math.sin(t);
+                    a.limbs.legR.rotation.x = -Math.sin(t);
+                    a.limbs.armL.rotation.x = -Math.sin(t);
+                    a.limbs.armR.rotation.x = Math.sin(t);
+                } else {
+                    // Idle
+                    a.limbs.legL.rotation.x = 0; a.limbs.legR.rotation.x = 0;
                 }
             });
 
-            // 2. Ball Physics
-            const b = Game.ball;
-            if(b.owner) {
-                b.mesh.position.copy(b.owner.mesh.position);
-                b.mesh.position.y = 3 + Math.sin(Date.now()*0.01)*2;
-                b.mesh.position.z += 1.5;
+            // 2. BALL PHYSICS
+            if(ball.owner) {
+                const p = ball.owner.mesh.position;
+                ball.mesh.position.set(p.x + Math.sin(Date.now()*0.01)*1.5, 4 + Math.abs(Math.sin(Date.now()*0.015)*2), p.z + 1.5);
             } else {
-                b.mesh.position.add(b.vel);
-                b.vel.y -= 0.03; // Gravity
-                if(b.mesh.position.y < 0.7) { b.mesh.position.y = 0.7; b.vel.y *= -0.7; }
+                ball.mesh.position.add(ball.vel);
+                ball.vel.y -= 0.02; // Grav
                 
-                // Hoop Check
-                if(Math.abs(b.mesh.position.z) > 44 && Math.abs(b.mesh.position.x) < 2 && b.mesh.position.y > 10 && b.vel.y < 0) {
-                    // SCORE
-                    Game.scores[b.mesh.position.z > 0 ? 'away':'home'] += 2;
-                    document.getElementById('sc-h').innerText = Game.scores.home;
-                    document.getElementById('sc-a').innerText = Game.scores.away;
-                    
-                    // Reset
-                    b.vel.set(0,0,0); b.owner = null; b.mesh.position.set(0,10,0);
-                    Game.possession = Game.possession==='home'?'away':'home'; // Swap poss
+                // Floor
+                if(ball.mesh.position.y < 0.6) {
+                    ball.mesh.position.y = 0.6; ball.vel.y *= -0.6;
+                }
+
+                // Bounds
+                if(Math.abs(ball.mesh.position.z) > 48 || Math.abs(ball.mesh.position.x) > 26) {
+                    notify("OUT OF BOUNDS");
+                    resetPlay(Game.possession==='home'?'away':'home');
+                }
+
+                // Scoring
+                const hoopZ = Game.possession==='home' ? -41 : 41; // Target
+                // Check dist to hoop center
+                if(Math.abs(ball.mesh.position.z - hoopZ) < 2 && Math.abs(ball.mesh.position.x) < 2 && ball.mesh.position.y > 9 && ball.vel.y < 0) {
+                    score(Game.possession);
                 }
             }
+
+            // Camera
+            const focus = ball.owner ? ball.owner.mesh.position : ball.mesh.position;
+            camera.position.x += (40 + focus.x*0.1 - camera.position.x)*0.05;
+            camera.position.z += (focus.z*0.5 - camera.position.z)*0.05;
+            camera.lookAt(focus.x, 0, focus.z);
 
             renderer.render(scene, camera);
         }
 
-        function playerAction() {
-            // User shoot/pass
-            const user = Game.actors.find(a=>a.user);
-            if(Game.ball.owner === user) {
-                Game.ball.owner = null;
-                // Shoot to hoop
-                const hoopZ = 43; // Away hoop
-                const dx = 0 - user.mesh.position.x;
-                const dz = hoopZ - user.mesh.position.z;
-                Game.ball.vel.set(dx*0.045, 1.0, dz*0.045);
+        // --- 6. LOGIC HELPERS ---
+        function score(team) {
+            Game.scores[team] += 2;
+            document.getElementById('sc-h').innerText = Game.scores.home;
+            document.getElementById('sc-a').innerText = Game.scores.away;
+            notify("BUCKET!");
+            resetPlay(team==='home'?'away':'home');
+        }
+
+        function resetPlay(nextPoss) {
+            Game.possession = nextPoss;
+            ball.owner = null; ball.vel.set(0,0,0);
+            
+            // Teleport ball to PG of next team
+            const pg = actors.find(a => a.team === nextPoss && a.role === 0);
+            ball.owner = pg;
+            
+            // Reset players to backcourt
+            actors.forEach(a => {
+                const zBase = a.team==='home' ? 20 : -20;
+                a.mesh.position.set((a.role-2)*5, 0, zBase);
+            });
+        }
+
+        function notify(msg) {
+            const el = document.getElementById('notify');
+            el.innerText = msg; el.style.opacity = 1;
+            setTimeout(()=>el.style.opacity=0, 1500);
+        }
+
+        // Input
+        window.onkeydown = e => { 
+            if(e.key==='Escape') togglePause();
+            if(e.key===' ') shoot();
+            if(e.key.startsWith('Arrow')) keys[e.key]=true; 
+        };
+        window.onkeyup = e => { if(e.key.startsWith('Arrow')) keys[e.key]=false; };
+
+        function shoot() {
+            const u = actors.find(a=>a.user);
+            if(ball.owner === u) {
+                ball.owner = null;
+                const hoopZ = u.team==='home' ? -43 : 43;
+                const dx = 0 - u.mesh.position.x;
+                const dz = hoopZ - u.mesh.position.z;
+                ball.vel.set(dx*0.04, 0.9, dz*0.04);
             }
+        }
+
+        function togglePause() {
+            Game.paused = !Game.paused;
+            document.getElementById('pause').classList.toggle('active');
         }
 
     </script>
